@@ -37,3 +37,17 @@ Der Fortschritt hängt an einer Prüfsumme der Frage: Wird eine Frage umformulie
 ```bash
 npx serve .
 ```
+
+## KI-Tutor („Frag die KI zu dieser Karte“)
+
+Unter jeder Karte im Lernmodus gibt es einen Chat. Die Frage geht zusammen mit Kartenfrage und Musterantwort an
+`/api/ask` (Vercel Edge Function), die die Claude-API aufruft und die Antwort streamt. Solange die Karte nicht
+umgedreht ist, gibt die KI nur Hinweise statt der Lösung. Der Verlauf gilt pro Karte und wird nicht gespeichert.
+
+Umgebungsvariablen in Vercel (Project → Settings → Environment Variables, danach neu deployen):
+
+| Variable | Pflicht | Bedeutung |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | ja | API-Schlüssel von console.anthropic.com |
+| `KK_MODEL` | nein | Modell, Standard `claude-sonnet-5-5` (günstiger: `claude-haiku-5-5`) |
+| `ACCESS_CODE` | nein | Wenn gesetzt, fragt die App einmal nach diesem Code – schützt den API-Schlüssel vor fremder Nutzung |

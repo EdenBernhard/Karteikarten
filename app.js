@@ -25,6 +25,31 @@
     } catch (e) { /* Formel bleibt als Text stehen */ }
   }
 
+
+  // Mini-Markdown für KI-Antworten (Formeln bleiben für KaTeX unangetastet)
+  function md(src) {
+    const keep = [];
+    const hold = h => "\u0000" + (keep.push(h) - 1) + "\u0000";
+    let t = String(src)
+      .replace(/```[a-z]*\n?([\s\S]*?)(```|$)/g, (_, code) => hold(`<pre><code>${esc(code.replace(/\n$/, ""))}</code></pre>`))
+      .replace(/\$\$[\s\S]+?\$\$|\$[^$\n]+?\$/g, m => hold(esc(m)))
+      .replace(/`([^`\n]+)`/g, (_, code) => hold(`<code>${esc(code)}</code>`));
+    t = esc(t)
+      .replace(/\*\*(.+?)\*\*/g, "<b>$1</b>")
+      .replace(/(^|[\s(])\*([^*\n]+)\*/g, "$1<i>$2</i>");
+    const out = []; let list = null;
+    for (const line of t.split("\n")) {
+      const ul = line.match(/^\s*[-*•]\s+(.*)/), ol = line.match(/^\s*\d+[.)]\s+(.*)/), h = line.match(/^#{1,4}\s+(.*)/);
+      const kind = ul ? "ul" : ol ? "ol" : null;
+      if (list && list.kind !== kind) { out.push(`<${list.kind}>${list.items.join("")}</${list.kind}>`); list = null; }
+      if (kind) { (list ||= { kind, items: [] }).items.push(`<li>${(ul || ol)[1]}</li>`); continue; }
+      if (h) out.push(`<p><b>${h[1]}</b></p>`);
+      else if (line.trim()) out.push(`<p>${line}</p>`);
+    }
+    if (list) out.push(`<${list.kind}>${list.items.join("")}</${list.kind}>`);
+    return out.join("").replace(/\u0000(\d+)\u0000/g, (_, i) => keep[+i]);
+  }
+
   function setTheme(meta) {
     const r = document.documentElement.style;
     r.setProperty("--deck", (meta && meta.color) || "#6741d9");
@@ -201,7 +226,21 @@
           <span class="pos" id="pos"></span>
           <button class="btn-ghost" id="next" aria-label="Nächste Karte">→</button>
         </div>
+        <section class="ai" id="ai">
+          <button class="ai-toggle" id="aiToggle" aria-expanded="false"><span class="ai-ico">✦</span> Frag die KI zu dieser Karte <span class="chev">▾</span></button>
+          <div class="ai-body" id="aiBody" hidden>
+            <div class="ai-log" id="aiLog"></div>
+            <div class="ai-chips" id="aiChips">
+              <button data-q="Ich komm nicht drauf – gib mir einen Hinweis.">💡 Hinweis</button>
+              <button data-q="Erklär mir das bitte einfacher, Schritt für Schritt.">🧩 Einfacher erklären</button>
+              <button data-q="Warum ist das so? Erklär mir den Hintergrund.">❓ Warum?</button>
+              <button data-q="Gib mir ein konkretes Beispiel dazu.">🔍 Beispiel</button>
+            </div>
+            <form class="ai-form" id="aiForm"><textarea id="aiIn" rows="1" placeholder="Deine Frage zur Karte …"></textarea><button class="ai-send" id="aiSend" aria-label="Senden">➤</button></form>
+          </div>
+        </section>
         <p class="keys"><kbd>Leertaste</kbd> umdrehen · <kbd>1</kbd> nochmal · <kbd>2</kbd> gewusst · <kbd>←</kbd> <kbd>→</kbd> blättern</p>`;
+      setupAI();
       $("#onlyOpen").onchange = e => { S.onlyOpen = e.target.checked; rebuild(); };
       $("#shuffle").onclick = () => { shuffleArr(S.deck); S.idx = 0; S.flipped = false; drawCard(); };
       const rb = $("#reset");
@@ -247,6 +286,80 @@
         card.style.minHeight = h + "px";
       });
       $("#pos").textContent = `${S.idx + 1} / ${S.deck.length}`;
+      drawChat();
+    }
+
+
+    // ----- KI-Tutor -----
+    const chats = new Map(); // Karten-ID → [{role, content}]
+    let aiOpen = false, aiBusy = false;
+    const current = () => (S.deck.length && S.idx < S.deck.length) ? S.deck[S.idx] : null;
+
+    function setupAI() {
+      const tg = $("#aiToggle"), body = $("#aiBody"), inp = $("#aiIn");
+      const show = (open, focus) => { aiOpen = open; body.hidden = !open; tg.setAttribute("aria-expanded", open); $("#ai").classList.toggle("open", open); if (open) { drawChat(); if (focus) inp.focus(); } };
+      tg.onclick = () => show(!aiOpen, true);
+      show(aiOpen);
+      $("#aiChips").onclick = e => { const b = e.target.closest("button"); if (b) ask(b.dataset.q); };
+      $("#aiForm").onsubmit = e => { e.preventDefault(); ask(inp.value); };
+      inp.oninput = () => { inp.style.height = "auto"; inp.style.height = Math.min(inp.scrollHeight, 160) + "px"; };
+      inp.onkeydown = e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(inp.value); } };
+    }
+
+    function drawChat() {
+      const log = $("#aiLog"); if (!log) return;
+      const c = current();
+      const msgs = c ? (chats.get(c.id) || []) : [];
+      log.innerHTML = msgs.length ? msgs.map(m => `<div class="msg ${m.role === "user" ? "me" : "bot"}${m.error ? " err" : ""}">${m.role === "user" ? esc(m.content) : md(m.content)}</div>`).join("")
+        : `<p class="ai-empty">${c ? "Frag alles, was dir an dieser Karte unklar ist. Solange die Karte nicht umgedreht ist, gibt die KI erst mal nur Hinweise." : "Keine Karte ausgewählt."}</p>`;
+      math(log);
+      log.scrollTop = log.scrollHeight;
+      $("#aiChips").hidden = msgs.length > 0;
+      $("#aiSend").disabled = aiBusy || !c;
+    }
+
+    async function ask(text) {
+      text = (text || "").trim();
+      const c = current();
+      if (!text || !c || aiBusy) return;
+      const inp = $("#aiIn"); inp.value = ""; inp.style.height = "auto";
+      const msgs = chats.get(c.id) || []; chats.set(c.id, msgs);
+      msgs.push({ role: "user", content: text });
+      const bot = { role: "assistant", content: "" }; msgs.push(bot);
+      aiBusy = true; drawChat();
+      const log = $("#aiLog"), el = log.lastElementChild; el.classList.add("typing");
+      try {
+        const res = await fetch("/api/ask", {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-access-code": localStorage.getItem("kk:code") || "" },
+          body: JSON.stringify({ deck: deck.title, topic: topicOf(c.topic).label, q: c.q, a: c.a, revealed: S.flipped,
+            messages: msgs.filter(m => m !== bot && !m.error).map(({ role, content }) => ({ role, content })) })
+        });
+        if (res.status === 401) {
+          const code = prompt("Zugangscode für die KI:");
+          msgs.splice(-2, 2); aiBusy = false;
+          if (code) { localStorage.setItem("kk:code", code.trim()); return ask(text); }
+          drawChat(); return;
+        }
+        if (!res.ok || !res.body) {
+          let m = `Fehler ${res.status}`;
+          try { m = (await res.json()).error || m; } catch { if (res.status === 404) m = "Die KI-Funktion gibt es nur in der auf Vercel gehosteten App."; }
+          throw new Error(m);
+        }
+        const rd = res.body.getReader(), dec = new TextDecoder();
+        for (;;) {
+          const { done, value } = await rd.read(); if (done) break;
+          bot.content += dec.decode(value, { stream: true });
+          if (current() === c && el.isConnected) { el.innerHTML = md(bot.content); log.scrollTop = log.scrollHeight; }
+        }
+        if (!bot.content.trim()) throw new Error("Leere Antwort von der KI.");
+      } catch (e) {
+        bot.error = true;
+        bot.content = navigator.onLine === false ? "Du bist offline – die KI braucht eine Internetverbindung." : (e.message || "Unbekannter Fehler.");
+      } finally {
+        aiBusy = false;
+        if (current() === c) drawChat(); else { const s = $("#aiSend"); if (s) s.disabled = false; }
+      }
     }
 
     function flip() { if (!S.deck.length || S.idx >= S.deck.length) return; S.flipped = !S.flipped; $("#card")?.classList.toggle("flipped", S.flipped); }
