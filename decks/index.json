@@ -14,5 +14,13 @@
     "subtitle": "VL1–7 · Signale, Maxwell, Antennen, Funkkanal, Modulation, WLAN, Mobilfunk",
     "color": "#f76707",
     "color2": "#e64980"
+  },
+  {
+    "id": "dbi",
+    "file": "dbi.json",
+    "title": "DB-Implementierung",
+    "subtitle": "Einführung, Speicher & Puffer, Logging & ARIES, Transaktionen, Sperren, MVCC",
+    "color": "#0ca678",
+    "color2": "#1c7ed6"
   }
 ]

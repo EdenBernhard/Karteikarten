@@ -1,0 +1,798 @@
+{
+ "id": "dbi",
+ "title": "DB-Implementierung",
+ "topics": [
+  {
+   "id": "ein",
+   "label": "Einführung & Historie",
+   "color": "#f59f00"
+  },
+  {
+   "id": "spe",
+   "label": "Speicherverwaltung",
+   "color": "#12b886"
+  },
+  {
+   "id": "puf",
+   "label": "DB-Puffer",
+   "color": "#15aabf"
+  },
+  {
+   "id": "log",
+   "label": "Logging & WAL",
+   "color": "#4c6ef5"
+  },
+  {
+   "id": "rec",
+   "label": "Checkpoints & ARIES",
+   "color": "#7950f2"
+  },
+  {
+   "id": "ta",
+   "label": "Transaktionen & Serialisierbarkeit",
+   "color": "#e64980"
+  },
+  {
+   "id": "spr",
+   "label": "Sperrverfahren",
+   "color": "#fd7e14"
+  },
+  {
+   "id": "dl",
+   "label": "Deadlocks, Zeitstempel, OCC",
+   "color": "#f03e3e"
+  },
+  {
+   "id": "mv",
+   "label": "MVCC & Isolation Levels",
+   "color": "#2b8a3e"
+  }
+ ],
+ "cards": [
+  {
+   "topic": "ein",
+   "q": "Data, Database, Query – Definitionen?",
+   "a": "<ul><li><b>Data:</b> jede Information, die es wert ist, aufbewahrt zu werden (meist elektronisch)</li><li><b>Database:</b> Sammlung von Daten, organisiert für Zugriff und Änderung, über lange Zeit aufbewahrt</li><li><b>Query:</b> Operation, die bestimmte Daten aus der Datenbank extrahiert</li></ul><div class=\"tip\">Der deutsche Begriff „Datenbank“ ist mehrdeutig (DBMS oder Datenbestand). Besser: <b>Datenbasis</b>.</div>"
+  },
+  {
+   "topic": "ein",
+   "q": "Was ist ein Datenbankmodell? Nenne Beispiele.",
+   "a": "<p>Ein Datenmodell, das die logische Struktur einer Datenbank festlegt: wie Daten gespeichert, organisiert und manipuliert werden können.</p><p>Beispiele: relational, hierarchisch (IMS), Netzwerk (CODASYL), objektorientiert, objekt-relational, Document Model (XML, JSON).</p>"
+  },
+  {
+   "topic": "ein",
+   "q": "Relation und Schema?",
+   "a": "<ul><li><b>Relation:</b> Daten als zweidimensionale Tabelle; Zeilen (Tupel) = Entitäten/Fakten, Spalten (Attribute) = deren Eigenschaften</li><li><b>Schema:</b> Beschreibung der Struktur der Daten, oft „Metadaten“ genannt</li></ul>"
+  },
+  {
+   "topic": "ein",
+   "q": "Was ist ein DBMS, und welche drei Fähigkeiten bietet es?",
+   "a": "<p>Ein Werkzeug, um große Datenmengen effizient zu erzeugen und zu verwalten und sie sicher über lange Zeit persistent zu halten.</p><ol><li>Persistente Speicherung</li><li>Programmierschnittstelle</li><li>Transaktionsverwaltung</li></ol>"
+  },
+  {
+   "topic": "ein",
+   "q": "Was leistet die Transaktionsverwaltung eines DBMS?",
+   "a": "<p>Sie erlaubt nebenläufigen Zugriff vieler Prozesse (Transaktionen) und sichert dabei:</p><ul><li><b>Isolation:</b> der Anschein, dass TAs nacheinander laufen</li><li><b>Atomarität:</b> TAs laufen ganz oder gar nicht</li><li><b>Resilienz:</b> Wiederherstellung nach Fehlern</li></ul>"
+  },
+  {
+   "topic": "ein",
+   "q": "Business Transaction vs. Datenbank-Transaktion?",
+   "a": "<ul><li><b>Business Transaction:</b> Interaktion in der realen Welt (Geld, Waren, Informationen tauschen), deren Buchführung per Computer erfolgt → Transaction Processing (TP)</li><li><b>DB-Transaktion:</b> Gruppe von DB-Operationen (Anfragen, DML), die als Einheit ausgeführt wird, also atomar und scheinbar isoliert, nach dem ACID-Prinzip</li></ul>"
+  },
+  {
+   "topic": "ein",
+   "q": "Erkläre die ACID-Eigenschaften.",
+   "a": "<ul><li><b>Atomicity:</b> ganz oder gar nicht</li><li><b>Consistency:</b> von einem konsistenten Zustand (gemäß fachlicher Integritätsbedingungen) in einen konsistenten Zustand</li><li><b>Isolation:</b> Ergebnis so, als liefe die TA allein, also vor oder nach jeder anderen TA</li><li><b>Durability:</b> Ergebnisse abgeschlossener TAs bleiben erhalten, auch bei Systemversagen</li></ul>"
+  },
+  {
+   "topic": "ein",
+   "q": "Nenne die Komponenten der DBMS-Architektur von oben nach unten.",
+   "a": "<ol><li>DDL-Compiler, Query-Compiler (→ Query Plan), Transaction Manager</li><li>Execution Engine; daneben Logging &amp; Recovery sowie Concurrency Control (Lock Table)</li><li>Index-/File-/Record-Manager</li><li>Buffer Manager (Puffer)</li><li>Storage Manager</li><li>Storage</li></ol>"
+  },
+  {
+   "topic": "ein",
+   "q": "Warum speichert man Daten nicht einfach in Dateien?",
+   "a": "<ul><li>aufwändige Verwaltung, vor allem nach Ändern/Löschen</li><li>ineffizienter Zugriff bei großen Datenmengen</li><li>keine Verknüpfung von Daten</li></ul>"
+  },
+  {
+   "topic": "ein",
+   "q": "Hierarchisches Modell vs. Netzwerk-Modell?",
+   "a": "<ul><li><b>Hierarchisch</b> (IMS, IBM ab 1966, Apollo-Stücklisten): jeder Record-Typ hat genau einen Parent, aber mehrere Childs</li><li><b>Netzwerk</b> (CODASYL, 1969): mehrere Parents und Childs, auch Zyklen; Modellierung mit Bachman-Diagrammen, Zugriff über Zeiger (Current of Run Unit)</li></ul><p>Netzwerk-DBs wurden Anfang der 80er von relationalen DBMS verdrängt.</p>"
+  },
+  {
+   "topic": "ein",
+   "q": "Was zeichnet das relationale Modell aus?",
+   "a": "<ul><li>1969/70 von <b>E. F. Codd</b> publiziert (Turing Award 1981)</li><li>mathematisch fundiert (Relationenalgebra, Tupelkalkül)</li><li>deklarative DDL und Abfragesprache</li><li>klare Trennung von logischer und physischer Ebene</li></ul><p>IBM entwickelte erst auf Kundendruck <b>System R</b> (Sprache SEQUEL → SQL), ohne Codd.</p>"
+  },
+  {
+   "topic": "ein",
+   "q": "Nenne Meilensteine relationaler Datenbanken.",
+   "a": "<ul><li>IBM System R (1974) → SQL/DS (1981), DB2 (1983)</li><li>INGRES in Berkeley (1974, Stonebraker) → Sybase → MS SQL Server</li><li>Oracle (1977 SDL, Ellison; Oracle V2 1979)</li><li>POSTGRES (1985) → Postgres95 → PostgreSQL (1996); Stonebraker Turing Award 2014</li></ul>"
+  },
+  {
+   "topic": "ein",
+   "q": "Warum hatten objektorientierte DBMS kaum Erfolg?",
+   "a": "<ul><li>explizite Navigationspfade über Zeiger: schnell bei direkt verknüpften Objekten, langsam bei beliebigen Abfragen</li><li>Vermischung von physischer und logischer Sicht</li><li>oft an eine Programmiersprache gebunden</li><li>Standardisierung (ODMG) nur teilweise erfolgreich</li></ul><p>Nachfolger: objekt-relationale DBMS (UDTs, Funktionen, SQL:1999).</p>"
+  },
+  {
+   "topic": "ein",
+   "q": "Warum spaltenorientierte DBMS für Data Warehouses?",
+   "a": "<p>OLAP braucht sehr große Datenmengen, rein lesenden Zugriff und denormalisierte Schemata (Star/Snowflake). Spaltenorientierte Speicherung macht <b>Aggregationen über Spalten</b> sehr effizient. Meist verteilte Shared-Nothing-Systeme (Vertica, Netezza, HANA, Snowflake …).</p>"
+  },
+  {
+   "topic": "ein",
+   "q": "Was sind NoSQL-Datenbanken, und worauf verzichten sie oft?",
+   "a": "<p>„Not only SQL“: spezialisierte Systeme für semistrukturierte Daten, Graphen, Streams und gigantische Datenmengen mit horizontaler Skalierung.</p><p>Sie verzichten oft ganz oder teilweise auf <b>ACID</b> und auf ein <b>Schema</b>; wichtiger sind Verfügbarkeit und Skalierbarkeit.</p><p>Arten: Key-Value (Redis, Dynamo), Dokument (MongoDB), Graph (neo4j), Datenstrom (Kafka), Multi-Model (Cosmos DB).</p>"
+  },
+  {
+   "topic": "ein",
+   "q": "NewSQL, hybride Systeme, Cloud-/Shared-Disk-Systeme?",
+   "a": "<ul><li><b>NewSQL:</b> OLTP-Performance wie NoSQL, aber relational mit SQL, meist verteilt</li><li><b>Hybrid</b> (z. B. HyPer): zusätzlich OLAP-tauglich</li><li><b>Shared Disk / Cloud:</b> kein eigener Storage Manager, sondern Cloud-Speicher (z. B. S3), meist Append-Only; Speicher und Rechenleistung unabhängig skalierbar, aber höhere Latenz</li></ul>"
+  },
+  {
+   "topic": "ein",
+   "q": "Welches Fazit zieht die Vorlesung zur Systemauswahl?",
+   "a": "<p>Eine Datenbasis lebt meist <b>deutlich länger</b> als die Anwendung, für die sie erstellt wurde, und wird später von weiteren Anwendungen genutzt. Das relationale Modell ist flexibler gegenüber neuen Anforderungen und gewinnt vermutlich auch bei NoSQL wieder an Bedeutung.</p>"
+  },
+  {
+   "topic": "spe",
+   "q": "Beschreibe die Speicherhierarchie und wo die Grenze flüchtig/persistent liegt.",
+   "a": "<p>CPU-Register → CPU-Cache → RAM (byteweiser Zugriff, <b>flüchtig</b>) | SSD → Festplatte → Netz-/Cloud-Speicher (blockweiser Zugriff, <b>persistent</b>).</p><p>Nach unten: größer, langsamer, billiger.</p>"
+  },
+  {
+   "topic": "spe",
+   "q": "Wie groß sind die Zugriffszeiten in der Speicherhierarchie (skaliert auf 1 ns = 1 s)?",
+   "a": "<table><tr><th>Speicher</th><th>Zeit</th><th>skaliert</th></tr><tr><td>Register</td><td>1 ns</td><td>1 s</td></tr><tr><td>Cache</td><td>4 ns</td><td>4 s</td></tr><tr><td>RAM</td><td>100 ns</td><td>100 s</td></tr><tr><td>SSD</td><td>16.000 ns</td><td>4,4 h</td></tr><tr><td>HDD</td><td>2.000.000 ns</td><td>3,3 Wochen</td></tr><tr><td>Cloud</td><td>&gt; 50.000.000 ns</td><td>1,5 Jahre</td></tr></table>"
+  },
+  {
+   "topic": "spe",
+   "q": "Welche Eigenschaften von Festplatten (und SSDs) bestimmen das DBMS-Design?",
+   "a": "<ul><li>Daten werden <b>blockweise</b> gelesen/geschrieben (meist 4 KB)</li><li><b>sequenzieller</b> Zugriff ist schneller als Random Access, auch bei SSDs</li><li>bei HDDs muss ein mechanischer Kopf positioniert werden</li></ul>"
+  },
+  {
+   "topic": "spe",
+   "q": "Welche Entwurfsziele folgen daraus für ein DBMS?",
+   "a": "<ul><li>Anzahl der I/O-Operationen auf Sekundärspeicher <b>minimieren</b></li><li>notwendige Zugriffe möglichst <b>sequenziell</b></li><li>zusammengehörende Daten in denselben bzw. aufeinanderfolgenden Blöcken speichern</li></ul><p>Die Ziele hängen von der Technik ab und müssen bei neuer Hardware überdacht werden (z. B. Intel Optane, 2022 eingestellt).</p>"
+  },
+  {
+   "topic": "spe",
+   "q": "Warum nutzt ein DBMS nicht einfach den virtuellen Speicher des Betriebssystems (mmap)?",
+   "a": "<ul><li><b>Transaktionen:</b> das OS weiß nicht, welche Bereiche eine TA geändert hat und wann sie ausgelagert werden dürfen/müssen</li><li><b>Blockierung:</b> das DBMS weiß nicht, was im RAM liegt; ein Zugriff auf Ausgelagertes blockiert den Thread</li><li>schwierige Fehlerbehandlung</li><li><b>Performanz:</b> OS-Strukturen werden zum Engpass, das DBMS kennt seine Daten besser</li></ul><p>Deshalb umgehen die meisten DBMS das OS und allozieren Ressourcen früh selbst.</p>"
+  },
+  {
+   "topic": "spe",
+   "q": "Was ist der Storage Manager?",
+   "a": "<p>Die DBMS-Komponente, die die <b>Dateien</b> verwaltet: Sie kennt alle Dateien und die darin enthaltenen DB-Seiten, verwaltet freien/belegten Speicher und bildet Seiten-IDs auf physische Orte ab. Teilweise steuert sie auch das Scheduling der I/O.</p>"
+  },
+  {
+   "topic": "spe",
+   "q": "Hardware-Block, OS-Block, DB-Seite – was ist der Unterschied?",
+   "a": "<ul><li><b>Hardware-Block</b> (meist 4K): Einheit, die der Speicher garantiert <b>ausfallsicher</b> schreiben kann</li><li><b>OS-Block</b> (meist 4K)</li><li><b>DB-Seite</b> (512 B bis 16K): Speichereinheit fester Größe im DBMS, mit eindeutiger ID</li></ul>"
+  },
+  {
+   "topic": "spe",
+   "q": "Welche Arten der Seitenverwaltung innerhalb einer Datei gibt es?",
+   "a": "<ul><li>Heap File Organization</li><li>Tree File Organization</li><li>Index Sequential (ISAM)</li><li>Hashing File Organization</li></ul>"
+  },
+  {
+   "topic": "spe",
+   "q": "Wie werden Seiten in einer Heap-File-Organisation adressiert?",
+   "a": "<ul><li><b>Eine Datei:</b> Offset = Seitengröße × Seitennummer</li><li><b>Mehrere Dateien:</b> ein <b>Seitenverzeichnis</b> kennt die Orte der Seiten (in speziellen Seiten abgelegt, inkl. Metadaten über freien Speicher)</li></ul><p>Operationen: Create, Get, Write, Delete, Iteration über alle Seiten.</p>"
+  },
+  {
+   "topic": "spe",
+   "q": "Was steht im Header einer DB-Seite?",
+   "a": "<p>Seitengröße, Prüfsumme, DBMS-Version, TA-Informationen und weitere Verwaltungsinformationen (z. B. damit Seiten „self-contained“ sind, wie bei Oracle).</p>"
+  },
+  {
+   "topic": "spe",
+   "q": "Warum Slotted Pages statt Tupel einfach sequenziell in die Seite zu schreiben?",
+   "a": "<p>Sequenziell geht nur mit gleich langen Tupeln und führt nach dem Löschen zu Fragmentierung.</p><p><b>Slotted Page:</b> Ein <b>Slot-Array</b> im Header speichert die Orte der Tupel; die Seite wird vom Ende her mit Tupeln gefüllt. Der Header kennt die Anzahl belegter Slots und den Beginn des Tupelspeichers.</p>"
+  },
+  {
+   "topic": "spe",
+   "q": "Was ist „Vacuuming“ bei Slotted Pages?",
+   "a": "<p>Gelöschte Tupel hinterlassen Lücken. Ein <b>Hintergrundprozess</b> iteriert regelmäßig über die Seiten und reorganisiert sie bei Bedarf, damit der Platz wieder effizient nutzbar ist.</p>"
+  },
+  {
+   "topic": "spe",
+   "q": "Wie werden Tupel identifiziert – und darf die Anwendung diese IDs verwenden?",
+   "a": "<p>Record Identifier, oft <b>Page-ID + Slot</b>, evtl. mit Datei. Beispiele: Postgres CTID (6 B), SQLite ROWID (8 B), Oracle ROWID (10 B), SQL Server File:Page:Slot.</p><p><b>Nein:</b> Die Anwendung darf keine Annahmen über diese IDs machen und sollte sie nicht verwenden.</p>"
+  },
+  {
+   "topic": "spe",
+   "q": "Wo liegen die Schema-Informationen zu einem Tupel?",
+   "a": "<p>Nicht im Tupel. Der Tupel-Header enthält nur Metadaten wie TA-Informationen; das Schema liegt separat im <b>Data Dictionary</b>. Das DBMS interpretiert die Bytes des Tupels anhand des Schemas.</p>"
+  },
+  {
+   "topic": "spe",
+   "q": "Wie werden INTEGER, FLOAT, NUMERIC, VARCHAR und TIMESTAMP gespeichert?",
+   "a": "<ul><li><b>INTEGER</b> u. Ä.: wie in C/C++</li><li><b>FLOAT/REAL:</b> IEEE 754</li><li><b>NUMERIC/DECIMAL:</b> Festkomma, proprietär je DBMS</li><li><b>VARCHAR/BLOB:</b> Header mit Länge + Byte-Array</li><li><b>TIME/DATE/TIMESTAMP:</b> 32/64-bit Integer, z. B. Mikrosekunden seit 01.01.1970</li></ul>"
+  },
+  {
+   "topic": "spe",
+   "q": "Warum braucht man Festkommazahlen, und was ist ihr Nachteil?",
+   "a": "<p>Gleitkommazahlen haben Rundungsfehler (0.1 + 0.2 ≠ 0.3), das ist bei Geldbeträgen nicht tolerierbar. NUMERIC/DECIMAL rechnen ohne Rundungsfehler.</p><p><b>Nachteil:</b> langsamer (z. B. Postgres 2,34 s vs. 0,74 s für 10 Mio. Additionen).</p>"
+  },
+  {
+   "topic": "spe",
+   "q": "Warum sind Festkommazahlen eine Herausforderung für Standardsoftware (z. B. SAP)?",
+   "a": "<p>Jedes DBMS implementiert Format und Rechenoperationen proprietär. Ergebnisse können sich je nach DBMS unterscheiden, vor allem bei Aggregationen. Das erfordert aufwändige Tests und Anpassungen.</p>"
+  },
+  {
+   "topic": "spe",
+   "q": "Wie werden Tupel mit sehr großen Attributwerten gespeichert?",
+   "a": "<p>Das <b>Kern-Tupel</b> bleibt in der regulären Seite, der große Wert kommt in eine <b>Overflow-Page</b> (Postgres: TOAST ab 2 KB).</p><p>Sehr große BLOBs liegen in <b>externen Dateien</b> (Oracle BFILE, SQL Server FILESTREAM). Nachteil: kaum Verwaltung, nicht Teil von Transaktionen, eingeschränkte Recovery-/Backup-Garantien.</p>"
+  },
+  {
+   "topic": "spe",
+   "q": "Welche Nachteile hat die seitenbasierte Speicherarchitektur?",
+   "a": "<ul><li>Fragmentierung, wenn ein Tupel nicht auf eine Seite passt</li><li>unnötige I/O: man liest eine ganze Seite für ein Tupel, oder braucht viele Tupel, die auf verschiedenen Seiten liegen</li></ul>"
+  },
+  {
+   "topic": "spe",
+   "q": "Wie funktioniert Log-Structured Storage?",
+   "a": "<p>Für unveränderliche Speicher (S3, HDFS: write once, read many). Eine In-Memory-Seite protokolliert nur zwei Operationen:</p><ul><li><b>PUT</b> #id (Werte) → Insert oder Update</li><li><b>DELETE</b> #id</li></ul><p>Jede Operation wird angehängt; volle Seiten werden an das Gesamtprotokoll auf dem Sekundärspeicher angehängt.</p>"
+  },
+  {
+   "topic": "spe",
+   "q": "Wie liest man bei Log-Structured Storage effizient ein Tupel?",
+   "a": "<p>Ohne Hilfe müsste man das ganze Protokoll scannen. Ein <b>Tupel-Index</b> zeigt immer auf den neuesten Eintrag: liegt er im RAM, direkt lesen; liegt er auf dem Sekundärspeicher, die Seite in den Puffer holen.</p>"
+  },
+  {
+   "topic": "spe",
+   "q": "Was ist Verdichtung (Compaction), und welche Nachteile hat Log-Structured Storage?",
+   "a": "<p>Das Protokoll wächst immer weiter. Verdichtung im Hintergrund behält nur die jeweils aktuellste Operation pro Tupel; wegen Write-Once entstehen dabei neue Dateien.</p><p><b>Nachteile:</b> <b>Write Amplification</b> (unveränderte Tupel werden immer wieder neu geschrieben), Verdichtung ist aufwändig und in der Cloud teuer.</p><p>Beispiel: RocksDB (Meta, auf Basis von LevelDB).</p>"
+  },
+  {
+   "topic": "spe",
+   "q": "Was ist das Data Dictionary?",
+   "a": "<p>Der <b>Systemkatalog</b>: Metadaten wie Schemata, Indexe, Rechte/Rollen, Statistiken für die Optimierung. Er liegt in systemeigenen Tabellen und unterliegt denselben TA-Garantien.</p><p>Intern wird er per prozeduralem Code gelesen (nicht per SQL); Anwender können ihn abfragen, z. B. über INFORMATION_SCHEMA (ANSI) oder <code>\\d</code>, <code>SHOW TABLES</code>, <code>.tables</code>.</p>"
+  },
+  {
+   "topic": "puf",
+   "q": "Aufgaben und Ziele der Pufferverwaltung?",
+   "a": "<p><b>Aufgaben:</b> Inhalte des DB-Puffers verwalten, Seiten ein- und auslagern.</p><p><b>Ziele:</b> I/O minimieren, häufig genutzte Seiten im Puffer halten, Ausgleich zwischen TA-übergreifender und TA-lokaler Optimierung.</p><p>Optimierung räumlich (wohin schreiben?) und zeitlich (wann lesen/schreiben?).</p>"
+  },
+  {
+   "topic": "puf",
+   "q": "Wie ist der DB-Puffer aufgebaut?",
+   "a": "<p>Ein Array aus <b>Frames</b> (Seitenrahmen) gleicher Größe; in jeden Frame passt genau eine DB-Seite. Wird eine Seite angefordert, holt die Speicherverwaltung sie von Platte in einen freien Frame.</p>"
+  },
+  {
+   "topic": "puf",
+   "q": "Seitentabelle vs. Seitenverzeichnis?",
+   "a": "<table><tr><th></th><th>Seitentabelle (Page Table)</th><th>Seitenverzeichnis</th></tr><tr><td>verwaltet</td><td>Seiten im DB-Puffer</td><td>Seiten in den DB-Dateien</td></tr><tr><td>Inhalt</td><td>Frame, Infos für Ersetzung (Zeitstempel, Zähler, Pins), Dirty-Flag</td><td>Orte der Seiten, freier Speicher</td></tr><tr><td>Lebensdauer</td><td>flüchtig</td><td>persistent, ausfallsicher</td></tr></table>"
+  },
+  {
+   "topic": "puf",
+   "q": "Lock vs. Latch?",
+   "a": "<ul><li><b>Lock</b> (Sperre): koordiniert parallele Zugriffe auf DB-Objekte, im Rahmen einer Transaktion – konzeptionelles DB-Konstrukt</li><li><b>Latch:</b> schützt Datenstrukturen im Hauptspeicher bei Multithreading – Implementierungsebene (sonst „Mutex“ genannt)</li></ul>"
+  },
+  {
+   "topic": "puf",
+   "q": "Welche Vorteile haben mehrere DB-Puffer, und welche Regel gilt?",
+   "a": "<p>Vorteile: mehr Parallelität (weniger Latch Contention), höhere Lokalität, unterschiedliche Seitengrößen und Ersetzungsstrategien je Puffer (z. B. DB2: CREATE BUFFERPOOL … für einen Tablespace).</p><p><b>Regel:</b> Eine DB-Seite darf immer nur <b>einmal</b> existieren.</p>"
+  },
+  {
+   "topic": "puf",
+   "q": "Was ist Pre-Fetching?",
+   "a": "<p>Der Query-Optimizer erkennt, dass eine Anfrage viele zusammenhängende Daten braucht, und lädt sie vorab. Besonders vorteilhaft bei Sequential Scans und Index Scans (aufeinanderfolgende Blätter).</p>"
+  },
+  {
+   "topic": "puf",
+   "q": "Scan-Sharing – Prinzip und Unterschied zur Wiederverwendung im Puffer?",
+   "a": "<p>Mehrere Anfragen brauchen fast dieselben Daten; spätere Anfragen „hängen sich“ an den Scan der ersten an (gleicher Cursor). Es wird der <b>Lesevorgang</b> wiederverwendet, nicht nur Seiten im Puffer. Vorteil: Seiten müssen nicht erneut geladen werden, wenn sie bereits verdrängt wurden.</p><p>DB2, SQL Server, Postgres; Oracle nur bei identischen Anfragen.</p>"
+  },
+  {
+   "topic": "puf",
+   "q": "Wann umgeht man den Puffer (Buffer Pool Bypass)?",
+   "a": "<p>Bei großen sequenziellen Lesevorgängen: Sie würden den Puffer mit Seiten fluten, die niemand mehr braucht, und nützliche Seiten verdrängen. Stattdessen nutzt die Anfrage einen eigenen lokalen Puffer.</p>"
+  },
+  {
+   "topic": "puf",
+   "q": "Warum unterbinden die meisten DBMS den OS-Page-Cache? Welche Ausnahme gibt es?",
+   "a": "<ul><li>Daten liegen redundant im Hauptspeicher</li><li>die Ersetzungsstrategien arbeiten gegeneinander</li><li>das DBMS weiß nicht, was tatsächlich persistent ist</li></ul><p><b>Ausnahme Postgres:</b> nutzt den OS-Cache aktiv (Empfehlung ~40 % RAM für den DB-Puffer, andere Systeme ~80 %).</p>"
+  },
+  {
+   "topic": "puf",
+   "q": "LFU vs. LRU?",
+   "a": "<ul><li><b>LFU</b> (Least Frequently Used): Seite mit den wenigsten Zugriffen verdrängen. Nachteil: Alter wird ignoriert, eine früher oft genutzte Seite bleibt ewig.</li><li><b>LRU</b> (Least Recently Used): am längsten nicht genutzte Seite verdrängen; Umsetzung per Zeitstempel bzw. sortiertem Stack.</li></ul>"
+  },
+  {
+   "topic": "puf",
+   "q": "Wie funktioniert der Clock-Algorithmus?",
+   "a": "<p>Jede Seite hat ein <b>Benutzt-Bit</b>, das bei Zugriff auf 1 gesetzt wird. Ein Zeiger läuft im Kreis über die Seiten: steht das Bit auf 1, wird es auf 0 gesetzt und weitergegangen; steht es auf 0, wird die Seite verdrängt.</p><p>Annäherung an LRU mit weniger Verwaltungsaufwand.</p>"
+  },
+  {
+   "topic": "puf",
+   "q": "Was ist Sequential Flooding, und wie hilft LRU-K?",
+   "a": "<p>Ein sequenzieller Scan überflutet den Puffer mit Seiten, die nie wieder gebraucht werden; LRU und Clock behalten sie trotzdem als „frisch“.</p><p><b>LRU-K</b> (eine ARC-Strategie) merkt sich die letzten <b>K Zugriffszeitpunkte</b>, berechnet daraus die Intervalle und schätzt, wann der nächste Zugriff kommt.</p>"
+  },
+  {
+   "topic": "puf",
+   "q": "Lokale Ersetzung und Priority Hints?",
+   "a": "<ul><li><b>Lokal:</b> Optimierung je Anfrage/TA, z. B. kleiner Ringpuffer pro Anfrage (Postgres)</li><li><b>Priority Hints:</b> Das DBMS weiß aus dem Kontext, was oft gebraucht wird (z. B. B-Baum-Wurzel) und gibt diesen Seiten höhere Priorität</li></ul>"
+  },
+  {
+   "topic": "puf",
+   "q": "Was ist eine Dirty Page, und wie wird sie behandelt?",
+   "a": "<p>Eine Seite, deren Inhalt im Puffer verändert wurde. Vor ihrer Verdrängung muss sie persistent geschrieben werden, eine saubere Seite kann einfach überschrieben werden.</p><p>Deshalb <b>Background Writing:</b> Ein Hintergrundprozess durchläuft regelmäßig die Seitentabelle und schreibt Dirty Pages auf Platte, danach sind sie wieder sauber.</p>"
+  },
+  {
+   "topic": "log",
+   "q": "Steal, No-Steal, Force, No-Force?",
+   "a": "<ul><li><b>Steal:</b> geänderte Seite darf <b>vor</b> EOT auf Platte</li><li><b>No-Steal:</b> erst bei EOT</li><li><b>Force:</b> muss <b>bei</b> EOT auf Platte</li><li><b>No-Force:</b> darf auch <b>nach</b> EOT geschrieben werden</li></ul>"
+  },
+  {
+   "topic": "log",
+   "q": "Warum ist No-Steal/Force am einfachsten – und warum nutzt trotzdem fast jedes DBMS Steal/No-Force?",
+   "a": "<p><b>Einfach:</b> Unfertige TAs stehen nie auf Platte, abgeschlossene sind garantiert persistent → kaum Recovery-Aufwand.</p><p><b>Probleme:</b></p><ul><li>No-Steal: Blockade, wenn der Puffer voller geänderter Seiten ist; Write-Set ≤ Puffergröße</li><li>Force: Lastspitzen bei EOT, unnötige Schreibvorgänge</li><li>Seitenkopien nötig, wenn zwei TAs dieselbe Seite ändern und nur eine committet</li></ul>"
+  },
+  {
+   "topic": "log",
+   "q": "Welche Fehlerklassen gibt es?",
+   "a": "<ul><li><b>Transaktionsfehler:</b> Programmfehler, expliziter Abbruch, Abbruch durch das System (Deadlock) – betrifft nur die eine TA</li><li><b>Systemfehler:</b> Software- oder Hardwareausfall (Strom) – Primärspeicher verloren, Sekundärspeicher erhalten</li><li><b>Speicherfehler:</b> DB-Dateien verloren (Head-Crash, Feuer) – nur per Backup behebbar</li></ul>"
+  },
+  {
+   "topic": "log",
+   "q": "Was muss das DBMS im Fehlerfall garantieren?",
+   "a": "<ul><li>Änderungen <b>nicht abgeschlossener</b> TAs werden nicht sichtbar → UNDO</li><li>Änderungen <b>abgeschlossener</b> TAs bleiben erhalten → REDO</li></ul>"
+  },
+  {
+   "topic": "log",
+   "q": "Ordne R1- bis R4-Recovery den Fehlerklassen zu.",
+   "a": "<table><tr><th>Typ</th><th>Fehler</th><th>Aktion</th></tr><tr><td>R1</td><td>Transaktionsfehler</td><td>Transaction UNDO (nur diese TA)</td></tr><tr><td>R2</td><td>Systemfehler</td><td>Partial REDO abgeschlossener TAs</td></tr><tr><td>R3</td><td>Systemfehler</td><td>Global UNDO nicht abgeschlossener TAs</td></tr><tr><td>R4</td><td>Speicherfehler</td><td>Global REDO seit dem Backup</td></tr></table>"
+  },
+  {
+   "topic": "log",
+   "q": "Wie funktioniert das Schattenspeicher-Konzept (Shadow Paging)?",
+   "a": "<p>Zwei Seitentabellen: <b>Master</b> (nur abgeschlossene TAs) und <b>Shadow</b> (Änderungen der laufenden TA auf Seitenkopien). Zu Beginn zeigen beide auf dieselben Seiten; bei Änderung entsteht eine Schattenkopie.</p><p>Bei COMMIT wird die <b>Database Root</b> atomar auf die Schattentabelle umgesetzt. Entspricht im Prinzip No-Steal/Force.</p>"
+  },
+  {
+   "topic": "log",
+   "q": "Vor- und Nachteile des Schattenspeichers?",
+   "a": "<p><b>Vorteile:</b> Rollback = Schattentabelle löschen; Recovery = nichts zu tun.</p><p><b>Nachteile:</b> aufwändige Verwaltung (Kopie der Tabelle je TA), teurer COMMIT (alle Seiten + Tabelle schreiben), <b>Fragmentierung</b> → Garbage Collection, kein sequenzielles Lesen/Prefetching, nur eine schreibende TA.</p><p>Herkunft: System R; Varianten in LMDB, frühem CouchDB, SQLite bis 2010.</p>"
+  },
+  {
+   "topic": "log",
+   "q": "Was ist ein Write-Ahead Log (WAL), und welche Regel gilt?",
+   "a": "<p>Eine sequenziell geschriebene Protokolldatei, getrennt von den DB-Dateien. Jede Änderung einer Seite im Puffer wird protokolliert.</p><p><b>Regel:</b> Der Log-Eintrag muss ins WAL geschrieben werden, <b>bevor</b> die Seite in die DB-Datei geschrieben wird. Er muss UNDO und REDO ermöglichen. Strategie: Steal/No-Force.</p>"
+  },
+  {
+   "topic": "log",
+   "q": "Was enthält ein WAL-Änderungseintrag?",
+   "a": "<ul><li>Transaktions-ID</li><li>Objekt-ID (Seite, Tupel … je nach Granularität)</li><li><b>Before-Value</b> für UNDO</li><li><b>After-Value</b> für REDO</li></ul><p>Pro TA dazu BOT- und EOT-Einträge. Die Granularität muss der der Sperren entsprechen. Bei MVCC (kein Update-in-Place) entfällt der Before-Value.</p>"
+  },
+  {
+   "topic": "log",
+   "q": "In welcher Reihenfolge läuft ein COMMIT mit WAL ab?",
+   "a": "<ol><li>EOT/COMMIT-Eintrag in den WAL-Puffer</li><li>Log-Einträge im WAL auf Platte speichern</li><li>erst dann der Anwendung den erfolgreichen COMMIT melden</li></ol><p>Die geänderten Seiten selbst werden irgendwann später geschrieben (No-Force).</p>"
+  },
+  {
+   "topic": "log",
+   "q": "Was ist Group Commit?",
+   "a": "<p>Das Schreiben des WAL zum Ende jeder TA wird zum Flaschenhals (künstliche Serialisierung). Lösung: WAL-Schreibvorgänge mehrerer TAs bündeln und <b>mehrere WAL-Puffer</b> nutzen: Ist einer voll, wird er geschrieben, während der nächste schon befüllt wird.</p>"
+  },
+  {
+   "topic": "log",
+   "q": "WAL vs. Schattenspeicher – wann ist welches schneller?",
+   "a": "<p><b>WAL</b> ist im Normalbetrieb sehr performant (sequenzielles Schreiben, Group Commit), beim Recovery langsamer (WAL einlesen, UNDO/REDO ausführen). Da Recovery selten ist, nutzen die meisten Systeme WAL.</p>"
+  },
+  {
+   "topic": "log",
+   "q": "Physisches vs. logisches Logging?",
+   "a": "<table><tr><th></th><th>physisch</th><th>logisch</th></tr><tr><td>Inhalt</td><td>Werte vorher/nachher bzw. Byte-Diff</td><td>DML-Operation + Kompensationsoperation (INSERT ↔ DELETE)</td></tr><tr><td>meist für</td><td>Seiten</td><td>Tupel</td></tr><tr><td>Vorteile</td><td>einfach, einfaches Recovery</td><td>kompakt (Bulk-Updates), unabhängig von der physischen Struktur</td></tr><tr><td>Nachteile</td><td>grobe Sperren (Seiten), auch Indexänderungen loggen</td><td>Kompensation nicht trivial, R2/R4 im Single-User-Betrieb, DB muss aktionskonsistent sein</td></tr></table>"
+  },
+  {
+   "topic": "log",
+   "q": "Was ist physiological Logging?",
+   "a": "<p>„Physical-to-a-page, logical-within-a-page“: Log-Einträge beziehen sich auf eine <b>Seite</b> (physisch), beschreiben die Änderung aber als <b>Operation</b> (logisch), z. B. <code>INSERT_TUPLE(page, slot, data)</code>, <code>UPDATE_FIELD(page, slot, offset, old, new)</code>, <code>COMPACT_PAGE(page)</code>.</p><p>Bei komplexen Seitenänderungen (B-Baum-Split) Before-/After-Images. In der Praxis von den meisten Systemen genutzt.</p>"
+  },
+  {
+   "topic": "rec",
+   "q": "Welches Problem lösen Checkpoints?",
+   "a": "<p>Das WAL wächst unbegrenzt; beim Recovery müsste eine riesige Datei durchlaufen werden. Ein <b>Checkpoint</b> schreibt regelmäßig Seiten aus dem Puffer auf Platte und liefert einen Anhaltspunkt, wie weit man im WAL zurückgehen muss.</p>"
+  },
+  {
+   "topic": "rec",
+   "q": "Warum sind einfache Checkpoints unrealistisch?",
+   "a": "<ul><li>Warten, bis alle TAs fertig sind: aus Performancegründen unmöglich</li><li>TAs während des Checkpoints anhalten: immer noch starker Eingriff; außerdem ist ein Checkpoint bei großen Puffern nicht atomar</li></ul>"
+  },
+  {
+   "topic": "rec",
+   "q": "Was zeichnet Fuzzy Checkpoints aus?",
+   "a": "<ul><li>TAs laufen <b>während</b> des Checkpoints weiter</li><li>der Checkpoint ist <b>nicht atomar</b>, er zieht sich hin</li><li>nicht unbedingt alle Dirty Pages werden geschrieben</li></ul><p>Im WAL: <b>CHECKPOINT-BEGIN</b> und <b>CHECKPOINT-END</b>, dazu ATT und DPT.</p>"
+  },
+  {
+   "topic": "rec",
+   "q": "Was ist eine LSN?",
+   "a": "<p><b>Log Sequence Number:</b> global eindeutige, aufsteigende ID jedes WAL-Eintrags. Sie wird in ATT und DPT referenziert. Die Vergabe kann selbst zum Flaschenhals werden.</p>"
+  },
+  {
+   "topic": "rec",
+   "q": "Was enthält die Active Transaction Table (ATT)?",
+   "a": "<p>Alle TAs, die bei CHECKPOINT-END noch aktiv sind, mit <b>txnID</b>, <b>Status</b> (R = Running, C = Committing, U = Candidate for Undo) und <b>lastLSN</b> (letzte Änderung der TA).</p><p>TAs, die nach Checkpoint-Beginn starten oder währenddessen EOT erreichen, stehen nicht darin.</p>"
+  },
+  {
+   "topic": "rec",
+   "q": "Warum ist der Unterschied zwischen COMMIT und EOT wichtig?",
+   "a": "<p>Eine TA ist erst bei <b>EOT</b> wirklich abgeschlossen, dann sind auch Aufräumarbeiten wie das Freigeben von Locks erledigt. Eine TA nach COMMIT, aber vor EOT steht noch in der ATT (Status C); beim Recovery müssen die Aufräumarbeiten nachgeholt werden.</p>"
+  },
+  {
+   "topic": "rec",
+   "q": "Was enthält die Dirty Page Table (DPT), und wozu dient recLSN?",
+   "a": "<p>Alle Seiten, die bei CHECKPOINT-END noch dirty sind (geändert, nicht geschrieben), jeweils mit <b>recLSN</b> = LSN der <b>ersten</b> Änderung, die die Seite dirty gemacht hat.</p><p>Nur diese Seiten brauchen REDO; recLSN sagt, wie weit man dafür im WAL zurück muss.</p>"
+  },
+  {
+   "topic": "rec",
+   "q": "Wie oft sollte man Checkpoints durchführen?",
+   "a": "<p>Kompromiss: selten → langes, aufwändiges Recovery; oft → beeinträchtigt den Normalbetrieb. Deshalb in den meisten DBMS parametrisierbar.</p>"
+  },
+  {
+   "topic": "rec",
+   "q": "Was muss beim Recovery für abgeschlossene bzw. nicht abgeschlossene TAs passieren – und warum?",
+   "a": "<ul><li><b>Abgeschlossene TAs:</b> REDO der Änderungen, die nicht persistent waren – wegen <b>No-Force</b></li><li><b>Nicht abgeschlossene TAs:</b> UNDO der Änderungen, die schon auf Platte waren – wegen <b>Steal</b></li></ul>"
+  },
+  {
+   "topic": "rec",
+   "q": "Was ist ARIES, und was sind seine Eigenschaften?",
+   "a": "<p><b>Algorithm for Recovery and Isolation Exploiting Semantics</b>, IBM DB2, Anfang der 90er.</p><ul><li>unterstützt Steal/No-Force mit WAL und Fuzzy Checkpoints</li><li>verkraftet Fehler während des Recovery: REDO stellt den vollen Zustand vor dem Crash her (<b>Repeating History</b>), jedes UNDO wird protokolliert</li><li>REDO physisch auf Seitenbasis, UNDO logisch</li></ul>"
+  },
+  {
+   "topic": "rec",
+   "q": "Welche Verwaltungsinformationen nutzt ARIES?",
+   "a": "<ul><li><b>ATT</b> und <b>DPT</b> (am Ende jedes Checkpoints)</li><li>pro Seite: <b>recLSN</b> (erste Änderung, die sie dirty machte), <b>pageLSN</b> (letzte Änderung)</li><li>global: <b>flushedLSN</b> (letzter gespeicherter WAL-Eintrag), <b>MasterRecord</b> (LSN des letzten Checkpoint-Beginns)</li></ul>"
+  },
+  {
+   "topic": "rec",
+   "q": "Nenne die drei Phasen von ARIES mit Start- und Endpunkt.",
+   "a": "<ol><li><b>Analyse:</b> ab Beginn des letzten Checkpoints (MasterRecord) vorwärts; bestimmt aktive TAs und Dirty Pages</li><li><b>REDO:</b> ab der ältesten recLSN in der DPT vorwärts bis zum Ende (Repeating History)</li><li><b>UNDO:</b> vom Ende des WAL rückwärts bis zur ältesten lastLSN der TAs, die zurückgesetzt werden müssen</li></ol>"
+  },
+  {
+   "topic": "rec",
+   "q": "Wie aktualisiert die Analysephase ATT und DPT?",
+   "a": "<ul><li>BOT einer TA, die nicht in der ATT ist → aufnehmen (Status UNDO)</li><li>COMMIT einer TA → Status COMMIT</li><li>EOT einer TA → aus der ATT streichen</li><li>Änderung an einer Seite, die nicht in der DPT ist → aufnehmen, recLSN = diese LSN</li></ul>"
+  },
+  {
+   "topic": "rec",
+   "q": "Welche Operationen wiederholt die REDO-Phase, und was passiert danach?",
+   "a": "<p>Jede Änderung im WAL, die eine Seite in der DPT betrifft und deren LSN ≥ recLSN dieser Seite ist – auch von später abgebrochenen TAs und CLRs. Dabei kein zusätzliches Logging, kein erzwungenes Schreiben.</p><p>Danach: Für TAs mit Status COMMIT EOT schreiben und aus der ATT löschen, WAL-Puffer flushen.</p>"
+  },
+  {
+   "topic": "rec",
+   "q": "Was macht die UNDO-Phase, und was ist ein CLR?",
+   "a": "<p>Sie läuft vom Ende des WAL rückwärts und macht alle TAs mit Status UNDO rückgängig.</p><p>Nach jeder UNDO-Operation wird ein <b>Compensation Log Record (CLR)</b> geschrieben. Er verhindert, dass die Operation bei einem erneuten Crash nochmals rückgängig gemacht wird – Änderung + CLR ergeben eine „neutrale“ Operation.</p>"
+  },
+  {
+   "topic": "ta",
+   "q": "Welcher Zielkonflikt besteht bei der Ausführung von Transaktionen?",
+   "a": "<p>Fachlich müssten TAs nacheinander laufen, um korrekt zu sein. Technisch braucht man möglichst viel Nebenläufigkeit für hohen Durchsatz und kurze Antwortzeiten. Das ACID-Prinzip löst beides.</p>"
+  },
+  {
+   "topic": "ta",
+   "q": "Womit werden A, C, I und D jeweils umgesetzt?",
+   "a": "<ul><li><b>Atomicity:</b> Logging (UNDO-Logs) oder Schattenspeicher</li><li><b>Consistency:</b> korrektes Datenmodell und Integritätsbedingungen; TA sieht nur abgeschlossene TAs</li><li><b>Isolation:</b> Concurrency Control, pessimistisch (Konflikte verhindern) oder optimistisch (nachträglich auflösen)</li><li><b>Durability:</b> Logging (REDO-Logs) oder Schattenspeicher</li></ul>"
+  },
+  {
+   "topic": "ta",
+   "q": "Nebenläufig vs. parallel?",
+   "a": "<ul><li><b>Nebenläufig:</b> A und B sind unabhängig bearbeitbar; egal ob A vor B, B vor A oder gleichzeitig</li><li><b>Parallel:</b> sie werden tatsächlich gleichzeitig und unabhängig ausgeführt</li></ul>"
+  },
+  {
+   "topic": "ta",
+   "q": "Historie vs. Schedule?",
+   "a": "<ul><li><b>Historie:</b> die tatsächlich ausgeführte Abfolge aller Operationen mehrerer TAs, nur <b>partiell</b> geordnet (parallele Threads)</li><li><b>Schedule:</b> möglicher Ausführungsplan; in der Vorlesung <b>total</b> geordnet, z. B. $r_1(X); r_3(Y); w_1(X)$</li></ul>"
+  },
+  {
+   "topic": "ta",
+   "q": "Was ist ein serieller Schedule, und wie viele gibt es für n TAs?",
+   "a": "<p>Alle TAs laufen streng hintereinander. Für $n$ TAs gibt es $n!$ verschiedene serielle Schedules.</p>"
+  },
+  {
+   "topic": "ta",
+   "q": "Wann stehen zwei Operationen in Konflikt?",
+   "a": "<ol><li>sie stammen aus <b>verschiedenen</b> TAs</li><li><b>mindestens eine</b> ist eine Schreiboperation</li><li>sie betreffen <b>dasselbe</b> Datenelement</li></ol>"
+  },
+  {
+   "topic": "ta",
+   "q": "Lost Update – Ablauf und Schedule?",
+   "a": "<p>Lagerbestand 100; TA1 entnimmt 20, TA2 entnimmt 30. Beide lesen 100, TA2 schreibt 70, dann TA1 80. Das Update von TA2 ist verloren (richtig wäre 50).</p>$$r_1(X);\\; r_2(X);\\; w_2(X);\\; w_1(X)$$"
+  },
+  {
+   "topic": "ta",
+   "q": "Dirty Read – Ablauf und Schedule?",
+   "a": "<p>TA1 schreibt X = 80 und bricht später ab. TA2 liest die 80 vorher und rechnet damit (55). Sie hat einen Wert benutzt, der nie gültig war (richtig: 75).</p>$$r_1(X);\\; w_1(X);\\; r_2(X);\\; w_2(X);\\; a_1$$"
+  },
+  {
+   "topic": "ta",
+   "q": "Non-Repeatable Read – Ablauf und Schedule?",
+   "a": "<p>TA1 summiert X und Y, TA2 ändert beide dazwischen. TA1 sieht X vor und Y nach TA2: 220 statt 250 oder 200.</p>$$r_1(X);\\; r_2(X);\\; w_2(X);\\; r_2(Y);\\; w_2(Y);\\; r_1(Y)$$"
+  },
+  {
+   "topic": "ta",
+   "q": "Was ist ein Phantom?",
+   "a": "<p>Dieselbe Anfrage liefert innerhalb einer TA eine <b>andere Ergebnismenge</b>, weil eine andere TA Tupel eingefügt, gelöscht oder so geändert hat, dass sie das Prädikat (nicht mehr) erfüllen. Beispiel: Ø-Preis aller Artikel &gt; 100 € ist erst 160, dann 165, weil Artikel B auf 50 € gesenkt wurde.</p>"
+  },
+  {
+   "topic": "ta",
+   "q": "Was bedeutet Serialisierbarkeit?",
+   "a": "<p>Ein beliebig verzahnter Schedule ist <b>serialisierbar</b>, wenn er denselben Datenbankzustand erzeugt wie <b>irgendein</b> serieller Schedule derselben TAs. So vermeidet man Anomalien, ohne auf Nebenläufigkeit zu verzichten.</p>"
+  },
+  {
+   "topic": "ta",
+   "q": "Welche Vertauschungen benachbarter Operationen sind erlaubt?",
+   "a": "<p>Nur <b>konfliktfreie</b> Paare aus verschiedenen TAs. Konfliktbehaftete (Lese-Schreib, Schreib-Schreib auf dasselbe Element) behalten ihre Reihenfolge, weil sich sonst das Ergebnis ändern kann. Operationen innerhalb einer TA werden nie vertauscht.</p>"
+  },
+  {
+   "topic": "ta",
+   "q": "Konflikt-Äquivalenz und Konflikt-Serialisierbarkeit?",
+   "a": "<ul><li><b>Konflikt-äquivalent:</b> zwei Schedules lassen sich durch konfliktfreie Tausche ineinander überführen</li><li><b>Konflikt-serialisierbar:</b> konflikt-äquivalent zu einem seriellen Schedule</li></ul><p>Konflikt-Serialisierbarkeit ist <b>hinreichend</b>, aber nicht notwendig für Serialisierbarkeit.</p>"
+  },
+  {
+   "topic": "ta",
+   "q": "Wie prüft man Serialisierbarkeit mit dem Abhängigkeitsgraphen?",
+   "a": "<p>Knoten = TAs. Für jedes Konfliktpaar, in dem eine Operation von $T_i$ vor einer von $T_j$ liegt, eine Kante $T_i \\to T_j$.</p><p><b>Zyklenfrei → konflikt-serialisierbar.</b> Eine topologische Sortierung liefert den äquivalenten seriellen Schedule.</p>"
+  },
+  {
+   "topic": "ta",
+   "q": "Warum nutzen reale DBMS weder Tauschoperationen noch Abhängigkeitsgraphen?",
+   "a": "<p>Nicht-Serialisierbarkeit wird oft erst im Nachhinein erkannt (TAs müssten zurückgesetzt werden), und der Verwaltungsaufwand ist hoch (auch Abhängigkeiten zu abgeschlossenen TAs). Stattdessen: <b>Sperrverfahren</b>.</p>"
+  },
+  {
+   "topic": "spr",
+   "q": "Was macht der Scheduler, und welche Regeln gelten für Sperren?",
+   "a": "<p>Der Scheduler koordiniert die Operationen nebenläufiger TAs und stellt sie zurück, bis ihre Ausführung die Serialisierbarkeit nicht gefährdet (Sperrentabelle).</p><ul><li>vor Lesen/Schreiben von X: Sperre $l_i(X)$ anfordern</li><li>jede Sperre wieder freigeben: $u_i(X)$</li><li>solange $T_i$ X sperrt, kann keine andere TA X sperren</li></ul>"
+  },
+  {
+   "topic": "spr",
+   "q": "Reichen einfaches Sperren und Freigeben für Serialisierbarkeit?",
+   "a": "<p><b>Nein.</b> Gibt TA1 die Sperre auf X nach dem Lesen frei, kann TA2 X und Y ändern, bevor TA1 Y liest: Der Non-Repeatable Read tritt trotz Sperren auf.</p>"
+  },
+  {
+   "topic": "spr",
+   "q": "Was besagt das 2-Phasen-Sperrprotokoll (2PL)?",
+   "a": "<p>In jeder TA müssen <b>alle Sperranforderungen vor der ersten Freigabe</b> erfolgen.</p><ol><li><b>Wachstumsphase:</b> Sperren anfordern</li><li><b>Schrumpfungsphase:</b> Sperren freigeben (spätestens bei TA-Ende)</li></ol><p>Garantiert konflikt-serialisierbare Schedules.</p>"
+  },
+  {
+   "topic": "spr",
+   "q": "Warum verhindert 2PL keinen Dirty Read?",
+   "a": "<p>2PL geht von fehlerfreiem Betrieb aus. TA1 kann X schreiben und die Sperre in der Schrumpfungsphase freigeben, bevor sie abbricht; TA2 liest dann den ungültigen Wert.</p><p>Kaskadierendes Rollback wäre eine Lösung, ist aber zu aufwändig.</p>"
+  },
+  {
+   "topic": "spr",
+   "q": "Was ist striktes 2PL, und in welcher Reihenfolge läuft der Commit ab?",
+   "a": "<p>Alle Sperren werden erst <b>am Ende der TA</b> freigegeben, nachdem ihr Überleben per Logging gesichert ist:</p><ol><li>Force-Write des COMMIT-Log-Eintrags</li><li>COMMIT durchführen</li><li>erst dann Sperren freigeben</li></ol><p>So sieht keine andere TA „schmutzige“ Daten.</p>"
+  },
+  {
+   "topic": "spr",
+   "q": "Wie entsteht ein Deadlock durch Sperren?",
+   "a": "<p>TA1 hält X und will Z, TA2 hält Z und will X. Beide warten aufeinander und kommen nie weiter.</p>"
+  },
+  {
+   "topic": "spr",
+   "q": "SX-Sperren: Regeln und Kompatibilitätsmatrix?",
+   "a": "<p><b>S</b> (shared, lesen) und <b>X</b> (exclusive, schreiben). Lesen braucht S oder X, Schreiben braucht X.</p><table><tr><th>gehalten \\ angefordert</th><th>S</th><th>X</th></tr><tr><td>S</td><td>ja</td><td>nein</td></tr><tr><td>X</td><td>nein</td><td>nein</td></tr></table><p>Vorteil: Nur-Leser behindern sich nicht.</p>"
+  },
+  {
+   "topic": "spr",
+   "q": "Was ist eine Sperrkonversion (Upgrade), und welches Risiko hat sie?",
+   "a": "<p>Eine TA hält erst S auf X und fordert später X an. Freundlicher gegenüber anderen: Sie können X zwischenzeitlich mitlesen.</p><p><b>Risiko:</b> mehr Deadlocks. Halten zwei TAs S(A) und wollen beide auf X upgraden, warten sie ewig aufeinander.</p>"
+  },
+  {
+   "topic": "spr",
+   "q": "Was ist eine Update-Sperre, und wie sieht die Kompatibilität aus?",
+   "a": "<p>U = Lesesperre mit der Absicht, später zu schreiben. Danach darf keine andere TA mehr eine Sperre setzen; bestehende S-Sperren dürfen bleiben.</p><table><tr><th>gehalten \\ angefordert</th><th>S</th><th>X</th><th>U</th></tr><tr><td>S</td><td>ja</td><td>nein</td><td>ja</td></tr><tr><td>X</td><td>nein</td><td>nein</td><td>nein</td></tr><tr><td>U</td><td>nein</td><td>nein</td><td>nein</td></tr></table><p>Verhindert den Upgrade-Deadlock: Die zweite TA wartet schon beim U.</p>"
+  },
+  {
+   "topic": "spr",
+   "q": "Warum hierarchische Sperren, und welchen Zielkonflikt lösen sie?",
+   "a": "<p>Hierarchie: DB → Tabelle → Seite → Tupel → Attribut.</p><ul><li>grobe Sperren: wenig Verwaltung, aber wenig Parallelität</li><li>feine Sperren: viel Parallelität, aber viel Verwaltung</li></ul><p>Man braucht beide Ebenen gleichzeitig.</p>"
+  },
+  {
+   "topic": "spr",
+   "q": "Was sind Intention-Locks (IS, IX)?",
+   "a": "<p>Anwartschaftssperren: Bevor auf einer Ebene S oder X gesetzt wird, muss auf <b>allen übergeordneten Knoten</b> ab der Wurzel IS (Absicht zu lesen) bzw. IX (Absicht zu schreiben) gesetzt werden. So erkennt man Konflikte zwischen Ebenen, z. B. X auf der ganzen Tabelle vs. S auf einem Tupel.</p>"
+  },
+  {
+   "topic": "spr",
+   "q": "Kompatibilitätsmatrix für IS, IX, S, X?",
+   "a": "<table><tr><th>gehalten \\ angefordert</th><th>IS</th><th>IX</th><th>S</th><th>X</th></tr><tr><td>IS</td><td>ja</td><td>ja</td><td>ja</td><td>nein</td></tr><tr><td>IX</td><td>ja</td><td>ja</td><td>nein</td><td>nein</td></tr><tr><td>S</td><td>ja</td><td>nein</td><td>ja</td><td>nein</td></tr><tr><td>X</td><td>nein</td><td>nein</td><td>nein</td><td>nein</td></tr></table><p>Es gibt keine Totalordnung „stärker/schwächer“ (IX und S sind unvergleichbar).</p>"
+  },
+  {
+   "topic": "spr",
+   "q": "Beispiel: T1 liest alle „Meierhofer“, T2 ändert Mitarbeiter 4711. Welche Sperren?",
+   "a": "<ul><li>T1: IS auf Mitarbeiter, S auf die beiden Tupel</li><li>T2: IX auf Mitarbeiter (kompatibel zu IS), X auf Tupel 4711</li></ul><p>Wäre 4711 ein Meierhofer, müsste T2 warten, bis T1 die S-Sperre freigibt.</p>"
+  },
+  {
+   "topic": "spr",
+   "q": "Was ist Lock Escalation?",
+   "a": "<p>TAs setzen zunächst Tupelsperren; ab einer bestimmten Anzahl werden sie durch eine Sperre auf der nächsthöheren Ebene (Seite, Tabelle) ersetzt, um den Verwaltungsaufwand zu begrenzen.</p>"
+  },
+  {
+   "topic": "spr",
+   "q": "Welche expliziten Sperren kann man in SQL setzen?",
+   "a": "<ul><li>Tabellensperren (nicht im Standard): <code>LOCK TABLE t IN … MODE</code> (Postgres, DB2, Oracle), MySQL <code>LOCK TABLE t READ/WRITE</code>, SQL Server <code>WITH TABLOCK</code></li><li>Standard: <code>SELECT … FOR UPDATE [OF spalten]</code> (X-Sperre fürs spätere Update)</li><li>Varianten: <code>FOR SHARE</code>, <code>NOWAIT</code>, <code>SKIP LOCKED</code>, <code>WAIT n</code></li></ul>"
+  },
+  {
+   "topic": "spr",
+   "q": "Warum verhindern die bisherigen Sperrverfahren keine Phantome? Welche drei Ansätze gibt es?",
+   "a": "<p>Sperren wirken nur auf <b>vorhandene</b> Objekte; neu eingefügte (oder neu ins Prädikat fallende) Tupel sind nicht gesperrt.</p><ol><li><b>Queries wiederholen:</b> Scan Sets beim Commit erneut prüfen – sehr teuer</li><li><b>Logische Sperren:</b> Prädikatsperren – Disjunktheit im Allgemeinen unentscheidbar, nur Theorie</li><li><b>Index-Sperren:</b> Wertebereiche im Index sperren – in der Praxis</li></ol>"
+  },
+  {
+   "topic": "spr",
+   "q": "Key-Value-, Gap- und Key-Range-Locks?",
+   "a": "<ul><li><b>Key-Value-Lock:</b> sperrt einen Schlüssel – reicht gegen Phantome nicht</li><li><b>Gap-Lock:</b> sperrt die Lücke zwischen zwei Schlüsseln, also auch nicht existierende Werte, z. B. (14, 16)</li><li><b>Key-Range-Lock:</b> Schlüssel + folgende Lücke, z. B. [14, 16); braucht virtuelle Schlüssel für 16 … ∞</li></ul>"
+  },
+  {
+   "topic": "spr",
+   "q": "Was ist das Tree-Protocol, und welche Regeln hat es?",
+   "a": "<p>Ein Sperrprotokoll für B-Bäume, das 2PL verletzt, aber trotzdem serialisierbar ist, weil jeder Zugriff von der Wurzel ausgeht.</p><ol><li>erste Sperre auf beliebigem Knoten</li><li>weitere Sperren nur auf Knoten, deren Elternknoten man gesperrt hat</li><li>Sperren dürfen jederzeit freigegeben werden</li><li>ein Knoten darf nicht erneut gesperrt werden</li></ol><p>So sperren alle TAs gemeinsame Knoten in derselben Reihenfolge.</p>"
+  },
+  {
+   "topic": "dl",
+   "q": "Deadlock-Verhütung vs. -Vermeidung? Was ist das Ziel beim Zurücksetzen?",
+   "a": "<p><b>Verhütung (Prevention):</b> Deadlocks können gar nicht entstehen (z. B. Preclaiming). <b>Vermeidung (Avoidance):</b> bei Konflikten wird eingegriffen.</p><p>Ziel: möglichst wenige Rücksetzungen und keine „teuren“ TAs zurücksetzen.</p>"
+  },
+  {
+   "topic": "dl",
+   "q": "Was ist Preclaiming, und warum wird es kaum genutzt?",
+   "a": "<p>Eine TA fordert <b>alle</b> Sperren schon bei BOT an. Bei Konflikt alles freigeben und später neu starten oder in fester Reihenfolge warten.</p><p>Nachteil: Bei BOT ist meist nur eine Obermenge der Sperren bekannt → viele Konflikte, geringe Nebenläufigkeit.</p>"
+  },
+  {
+   "topic": "dl",
+   "q": "Timeout und Immediate Restart – Vor- und Nachteile?",
+   "a": "<ul><li><b>Timeout:</b> Rücksetzen nach zu langem Warten; einfach, aber optimale Zeit schwer zu wählen, viele unnötige Rücksetzungen → nur in verteilten DBMS</li><li><b>Immediate Restart / No Wait:</b> bei Konflikt sofort zurücksetzen; einfach, aber extrem viele Rücksetzungen → in der Praxis nicht genutzt</li></ul>"
+  },
+  {
+   "topic": "dl",
+   "q": "Wie funktioniert Wait Depth Limited (WDL)?",
+   "a": "<p>$T_i$ fordert eine Sperre, die $T_j$ hält. Warten ist nur bis Tiefe 1 erlaubt:</p><ul><li>ist $T_j$ selbst blockiert → $T_j$ zurücksetzen, $T_i$ bekommt die Sperre</li><li>sonst: wartet schon jemand auf $T_i$ → $T_i$ zurücksetzen</li><li>sonst wartet $T_i$ auf $T_j$</li></ul>"
+  },
+  {
+   "topic": "dl",
+   "q": "Wait/Die vs. Wound/Wait?",
+   "a": "<p>Jede TA hat eine Zeitmarke (ältere = kleiner). $T_i$ will eine Sperre, die $T_j$ hält:</p><table><tr><th></th><th>$T_i$ älter</th><th>$T_i$ jünger</th></tr><tr><td><b>Wait/Die</b></td><td>$T_i$ wartet</td><td>$T_i$ stirbt</td></tr><tr><td><b>Wound/Wait</b></td><td>$T_j$ wird zurückgesetzt (verwundet)</td><td>$T_i$ wartet</td></tr></table><p>In beiden Fällen wird immer die <b>jüngere</b> TA zurückgesetzt.</p>"
+  },
+  {
+   "topic": "dl",
+   "q": "Warum behält eine zurückgesetzte TA ihre alte Zeitmarke? Was ist der Nachteil von Wait/Die und Wound/Wait?",
+   "a": "<p>Statische Zeitmarken verhindern <b>Verhungern</b>: Die TA wird mit jedem Neustart relativ älter und setzt sich irgendwann durch.</p><p>Nachteil: Es wird zurückgesetzt, obwohl evtl. gar kein Deadlock vorliegt. Wound/Wait schnitt in Simulationen besser ab.</p>"
+  },
+  {
+   "topic": "dl",
+   "q": "Wie erkennt man Deadlocks mit einem Wartegraphen?",
+   "a": "<p>Aus der Sperrentabelle: Knoten = TAs, Kante $T_i \\to T_j$, wenn $T_i$ auf $T_j$ wartet. <b>Zyklus = Deadlock.</b></p><p>Zyklensuche bei jedem Sperrkonflikt oder periodisch. Auflösung durch Rücksetzen eines Opfers, am besten der TA mit den <b>wenigsten Sperren</b>. Greift nur bei echten Deadlocks.</p>"
+  },
+  {
+   "topic": "dl",
+   "q": "Wie skaliert die Deadlock-Wahrscheinlichkeit, und welche Verfahren sind deshalb meist im Vorteil?",
+   "a": "<p>In Modellen quadratisch mit der Zahl paralleler TAs und mit der vierten Potenz der Zahl der Sperren (real eher stärker). Immer gilt: Deadlocks &lt; Sperrkonflikte. Deshalb sind Verfahren im Vorteil, die Deadlocks tatsächlich <b>erkennen</b>.</p>"
+  },
+  {
+   "topic": "dl",
+   "q": "Grundidee des Zeitstempelverfahrens?",
+   "a": "<p>Keine Sperren. Jede TA bekommt beim Start einen aufsteigenden Zeitstempel $TS(T_i)$; jedes Objekt X speichert $R\\text{-}TS(X)$ und $W\\text{-}TS(X)$ (letzter Leser/Schreiber). Die Serialisierungsreihenfolge ist die Zeitstempelreihenfolge.</p>"
+  },
+  {
+   "topic": "dl",
+   "q": "Zeitstempelverfahren: Regel beim Lesen?",
+   "a": "<p>Ist $W\\text{-}TS(X) &gt; TS(T_i)$, hat eine jüngere TA X bereits geändert – eine Änderung „aus der Zukunft“ → $T_i$ neu starten.</p><p>Sonst lesen und $R\\text{-}TS(X) = \\max(R\\text{-}TS(X), TS(T_i))$ setzen.</p>"
+  },
+  {
+   "topic": "dl",
+   "q": "Zeitstempelverfahren: Regel beim Schreiben?",
+   "a": "<p>Ist $R\\text{-}TS(X) &gt; TS(T_i)$ oder $W\\text{-}TS(X) &gt; TS(T_i)$, hat eine jüngere TA X schon gelesen oder geschrieben → $T_i$ neu starten.</p><p>Sonst schreiben und $W\\text{-}TS(X) = TS(T_i)$ setzen.</p>"
+  },
+  {
+   "topic": "dl",
+   "q": "Was besagt die Thomas Write Rule?",
+   "a": "<ul><li>$TS(T_i) &lt; R\\text{-}TS(X)$: eine jüngere TA hat X gelesen → $T_i$ zurücksetzen</li><li>$TS(T_i) &lt; W\\text{-}TS(X)$: eine jüngere TA hat X überschrieben → Schreiboperation von $T_i$ einfach <b>weglassen</b> und weitermachen</li></ul><p>Vermeidet unnötige Rücksetzungen, verletzt aber die Zeitstempelreihenfolge (dann nicht mehr konflikt-serialisierbar).</p>"
+  },
+  {
+   "topic": "dl",
+   "q": "Vor- und Nachteile des Zeitstempelverfahrens?",
+   "a": "<p><b>Vorteile:</b> konflikt-serialisierbar (ohne Thomas Write Rule), keine Deadlocks.</p><p><b>Nachteile:</b> Verhungern langer TAs; jede Leseoperation muss auch schreiben (Zeitstempel); Kopien in den privaten Workspace.</p><p>Keine bekannte DB nutzt es direkt, aber es ist Basis für MVCC und OCC.</p>"
+  },
+  {
+   "topic": "dl",
+   "q": "Wann sind optimistische Verfahren sinnvoll, und wie laufen sie ab?",
+   "a": "<p>Wenn Konflikte selten sind (kurze TAs, viele Nur-Leser, disjunkte Daten).</p><ol><li><b>Lesephase:</b> Arbeit auf privaten Kopien, Read-Set RS und Write-Set WS ($WS \\subseteq RS$)</li><li><b>Validierungsphase:</b> Konflikte prüfen, ggf. zurücksetzen</li><li><b>Schreibphase:</b> Änderungen persistent machen (erst Logging)</li></ol>"
+  },
+  {
+   "topic": "dl",
+   "q": "BOCC vs. FOCC?",
+   "a": "<table><tr><th></th><th>BOCC (backward)</th><th>FOCC (forward)</th></tr><tr><td>prüft gegen</td><td>bereits validierte TAs</td><td>noch laufende TAs</td></tr><tr><td>Vergleich</td><td>RS der validierenden TA ∩ WS der während ihrer Lesephase validierten TAs</td><td>WS der validierenden TA ∩ RS der laufenden TAs</td></tr><tr><td>bei Konflikt</td><td>nur die validierende TA zurücksetzen</td><td>freie Wahl, Arbeitsverlust minimieren</td></tr></table>"
+  },
+  {
+   "topic": "dl",
+   "q": "Welche Probleme hat BOCC?",
+   "a": "<ul><li><b>Unechte Konflikte:</b> Hat die TA bereits die aktuelle Version gelesen, ist der Abbruch unnötig (Abhilfe: Versionszähler)</li><li><b>Starvation:</b> nur die validierende TA kann zurückgesetzt werden; lange TAs mit großem Read-Set scheitern immer wieder</li></ul>"
+  },
+  {
+   "topic": "dl",
+   "q": "Vor- und Nachteile optimistischer Verfahren?",
+   "a": "<p><b>Vorteile:</b> keine Deadlocks, höhere Parallelität (kein Blockieren).</p><p><b>Nachteile:</b> evtl. viele Rücksetzungen, die teurer sind als bei 2PL (erst nach der Ausführung); Aufwand für private Kopien; schwierige Implementierung (Seiten, Indexe).</p>"
+  },
+  {
+   "topic": "mv",
+   "q": "Grundidee von MVCC?",
+   "a": "<p>Das DBMS hält mehrere physische Versionen eines logischen Objekts. Schreiben erzeugt eine <b>neue Version</b> (nie überschreiben); Lesen liefert die neueste Version, die beim <b>Start</b> der TA existierte.</p><ul><li>Schreiber blockieren keine Leser</li><li>Leser blockieren keine Schreiber</li></ul><p>Bonus: „Zeitreisen“ in die Vergangenheit möglich.</p>"
+  },
+  {
+   "topic": "mv",
+   "q": "Wie bestimmt MVCC, welche Version eine TA sieht?",
+   "a": "<p>Jede Version hat <b>Begin-TS</b> (TA, die sie erzeugt hat) und <b>End-TS</b> (TA, die die nächste Version erzeugt hat). Eine TA sieht die Version mit Begin-TS ≤ TS(TA) &lt; End-TS – aber nur, wenn die erzeugende TA laut <b>TA-Statustabelle</b> abgeschlossen ist. Das ergibt Repeatable Reads.</p>"
+  },
+  {
+   "topic": "mv",
+   "q": "Was passiert bei MVCC, wenn zwei TAs dasselbe Objekt schreiben wollen?",
+   "a": "<p>Die spätere TA muss <b>warten</b>, bis die erste abgeschlossen ist (Snapshot Isolation). So werden Objekte in der Reihenfolge der Zeitstempel geändert. Auf Stufe Serializable müsste sie abbrechen.</p>"
+  },
+  {
+   "topic": "mv",
+   "q": "Was garantiert Snapshot Isolation – und was nicht?",
+   "a": "<p>Jede TA sieht ein konsistentes Bild der Daten zum Zeitpunkt TS(TA): Repeatable Reads, keine Änderungen laufender TAs, keine Phantome.</p><p><b>Aber:</b> Die <b>Write Skew Anomaly</b> ist möglich. Snapshot Isolation liegt unter Serializable.</p>"
+  },
+  {
+   "topic": "mv",
+   "q": "Erkläre die Write Skew Anomaly.",
+   "a": "<p>TA1: „mach alle roten Kreise blau“, TA2: „mach alle blauen Kreise rot“. Beide lesen denselben Snapshot und ändern <b>disjunkte</b> Objekte, also kein Schreibkonflikt. Ergebnis: Farben vertauscht – kein serieller Schedule erzeugt das (dort wären am Ende alle gleich).</p><p>Nur auf Stufe <b>Serializable</b> vermieden.</p>"
+  },
+  {
+   "topic": "mv",
+   "q": "Welche Architekturentscheidungen umfasst MVCC?",
+   "a": "<ol><li>Concurrency-Control-Protokoll (Zeitstempel, OCC oder 2PL auf Versionen)</li><li>versionierte Speicherung</li><li>Garbage Collection</li><li>Index-Management</li><li>Löschverfahren</li></ol>"
+  },
+  {
+   "topic": "mv",
+   "q": "Append-Only, Time-Travel, Delta Storage?",
+   "a": "<ul><li><b>Append-Only:</b> alle Versionen im selben Tablespace, per Zeiger verkettet</li><li><b>Time-Travel:</b> aktuelle Version in der Haupttabelle, alte werden in eine separate Tabelle kopiert (typisch bei nachgerüstetem MVCC, z. B. SQL Server)</li><li><b>Delta Storage:</b> nur die <b>geänderten Attribute</b> der Vorversion kommen in einen Delta-Speicher – speichereffizient, heute am verbreitetsten (SQL Server, Oracle, CockroachDB)</li></ul>"
+  },
+  {
+   "topic": "mv",
+   "q": "Oldest-to-Newest vs. Newest-to-Oldest?",
+   "a": "<ul><li><b>O2N:</b> neue Versionen ans Ende der Kette; Index zeigt auf die älteste → Kette durchlaufen bis zur neuesten</li><li><b>N2O:</b> Index zeigt auf die neueste → schneller Zugriff, aber <b>alle Indexe</b> müssen bei jeder neuen Version angepasst werden</li></ul>"
+  },
+  {
+   "topic": "mv",
+   "q": "Wann darf eine alte Version per Garbage Collection gelöscht werden?",
+   "a": "<p>Wenn keine laufende TA sie mehr sehen kann: Hat die <b>älteste aktive TA</b> einen TS &gt; End-TS der Version, kann sie freigegeben werden.</p>"
+  },
+  {
+   "topic": "mv",
+   "q": "Background Vacuuming, Cooperative Cleaning, TA-bezogene GC?",
+   "a": "<ul><li><b>Background Vacuuming:</b> Hintergrundprozess scannt alle Daten; optimiert mit Dirty Block Bitmap</li><li><b>Cooperative Cleaning:</b> bei O2N geben TAs beim Durchlaufen der Kette alte Versionen frei; selten genutzte Objekte brauchen zusätzlich Vacuuming</li><li><b>TA-bezogen:</b> jede TA sammelt ihre alten Versionen und übergibt sie beim COMMIT mit ihrem Begin-TS an den GC</li></ul>"
+  },
+  {
+   "topic": "mv",
+   "q": "Sekundärindexe bei MVCC: physische vs. logische Zeiger?",
+   "a": "<ul><li><b>Physische Zeiger:</b> direkt auf die Version bzw. Kettenanfang – schneller Zugriff, aber bei vielen Sekundärindexen müssen alle bei jeder neuen Version angepasst werden</li><li><b>Logische Zeiger</b> (Indirektion über den Primärindex): langsamerer Zugriff, aber Anpassung „gratis“</li></ul><p>Praxisbeispiel: Uber wechselte wegen des Postgres-Index-Managements zurück zu MySQL.</p>"
+  },
+  {
+   "topic": "mv",
+   "q": "Nenne die SQL-92-Isolation-Levels und die möglichen Anomalien.",
+   "a": "<table><tr><th>Level</th><th>Dirty Read</th><th>Non-Repeatable</th><th>Phantom</th></tr><tr><td>Serializable</td><td>nein</td><td>nein</td><td>nein</td></tr><tr><td>Repeatable Read</td><td>nein</td><td>nein</td><td>evtl.</td></tr><tr><td>Read Committed</td><td>nein</td><td>evtl.</td><td>evtl.</td></tr><tr><td>Read Uncommitted</td><td>evtl.</td><td>evtl.</td><td>evtl.</td></tr></table>"
+  },
+  {
+   "topic": "mv",
+   "q": "Wie werden die Isolation Levels mit Sperren umgesetzt?",
+   "a": "<ol><li><b>Serializable:</b> striktes 2PL, alle Sperren sofort, plus Index-Sperren</li><li><b>Repeatable Read:</b> wie 1, aber ohne Index-Sperren</li><li><b>Read Committed:</b> wie 2, aber Lesesperren werden sofort freigegeben</li><li><b>Read Uncommitted:</b> wie 3, aber gar keine Lesesperren</li></ol>"
+  },
+  {
+   "topic": "mv",
+   "q": "Wie setzt man den Isolation Level, und was sind typische Defaults?",
+   "a": "<p><code>SET TRANSACTION ISOLATION LEVEL …;</code> (alle TAs) bzw. <code>BEGIN TRANSACTION ISOLATION LEVEL …;</code></p><p>Defaults: Postgres, Oracle, SQL Server, SAP HANA <b>Read Committed</b>; MySQL <b>Repeatable Read</b>; CockroachDB, VoltDB <b>Serializable</b>. Oracle kann maximal Snapshot Isolation.</p>"
+  },
+  {
+   "topic": "mv",
+   "q": "Warum bieten DBMS schwächere Isolation Levels an, und welches Risiko zeigt der Silk-Road-Fall?",
+   "a": "<p>Serializable reduziert die Nebenläufigkeit; schwächere Stufen bringen Performance gegen Konsistenz.</p><p><b>Silk Road (2012):</b> Mit über 140 schnell aufeinanderfolgenden Transaktionen wurde das Auszahlungssystem überlistet und ~50.000 Bitcoin abgezogen – ein Beispiel für fehlende Isolation.</p>"
+  },
+  {
+   "topic": "mv",
+   "q": "Was sagt das Spanner-Paper zu Transaktionen?",
+   "a": "<p>Google argumentiert, es sei besser, wenn Anwendungsentwickler mit Performanceproblemen durch zu viele Transaktionen umgehen, als ständig um <b>fehlende</b> Transaktionen herum zu programmieren. Transaktionen gehören ins spezialisierte System, nicht in jede Anwendung.</p>"
+  }
+ ]
+}

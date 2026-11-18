@@ -1,6 +1,6 @@
 // Offline-Unterstützung: eigene Dateien network-first (Updates kommen sofort an),
 // KaTeX und Schriften cache-first.
-const CACHE = "kk-v2";
+const CACHE = "kk-v3";
 const SHELL = ["/", "/index.html", "/styles.css", "/app.js", "/decks/index.json", "/manifest.webmanifest", "/icon.svg"];
 
 self.addEventListener("install", e => {
