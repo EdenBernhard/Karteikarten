@@ -4,13 +4,15 @@
     "file": "wan.json",
     "title": "Weitverkehrsnetze (WAN)",
     "subtitle": "Sessions 1–4 · Glasfaser, MPLS, EVPN, BGP, SD-WAN, ZTNA, SASE",
-    "color": "#1f4e8c"
+    "color": "#6741d9",
+    "color2": "#4c6ef5"
   },
   {
     "id": "funk",
     "file": "funk.json",
     "title": "Funknetze",
     "subtitle": "VL1–7 · Signale, Maxwell, Antennen, Funkkanal, Modulation, WLAN, Mobilfunk",
-    "color": "#1f6f78"
+    "color": "#f76707",
+    "color2": "#e64980"
   }
 ]

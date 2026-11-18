@@ -25,6 +25,12 @@
     } catch (e) { /* Formel bleibt als Text stehen */ }
   }
 
+  function setTheme(meta) {
+    const r = document.documentElement.style;
+    r.setProperty("--deck", (meta && meta.color) || "#6741d9");
+    r.setProperty("--deck2", (meta && (meta.color2 || meta.color)) || "#4c6ef5");
+  }
+
   const store = {
     get(id) { try { return JSON.parse(localStorage.getItem("kk:" + id) || "{}") || {}; } catch (e) { return {}; } },
     set(id, v) { try { localStorage.setItem("kk:" + id, JSON.stringify(v)); } catch (e) { } }
@@ -67,13 +73,15 @@
   async function renderHome(idx) {
     document.title = "Karteikarten";
     crumb.textContent = "";
-    app.innerHTML = `<h1>Vorlesungen</h1><p class="sub">Wähle einen Stapel. Dein Fortschritt bleibt in diesem Browser gespeichert.</p>
+    setTheme(idx[0]);
+    app.innerHTML = `<h1>Was lernen wir <span class="hl">heute?</span></h1><p class="sub">Wähle einen Stapel. Dein Fortschritt bleibt in diesem Browser gespeichert.</p>
       <div class="decks">${idx.map(d => `
-        <a class="deck" href="#${esc(d.id)}" data-id="${esc(d.id)}">
-          <span class="stripe" style="background:${esc(d.color || "var(--accent)")}"></span>
+        <a class="deck" href="#${esc(d.id)}" data-id="${esc(d.id)}" style="--c:${esc(d.color || "#6741d9")};--c2:${esc(d.color2 || d.color || "#4c6ef5")}">
           <h2>${esc(d.title)}</h2><p>${esc(d.subtitle || "")}</p>
+          <div class="pct">–<small>% gewusst</small></div>
           <span class="meta">lädt …</span>
-          <div class="bar" style="margin:0"><span class="g"></span><span class="a"></span></div>
+          <div class="bar"><span class="bg"></span><span class="ba"></span></div>
+          <span class="go" aria-hidden="true">→</span>
         </a>`).join("")}</div>`;
     for (const meta of idx) {
       try {
@@ -83,9 +91,10 @@
         const a = d.cards.filter(c => p[c.id] === "again").length;
         const el = app.querySelector(`.deck[data-id="${CSS.escape(meta.id)}"]`);
         if (!el) continue;
-        el.querySelector(".meta").textContent = `${d.cards.length} Karten · ${g} gewusst · ${a} nochmal`;
-        el.querySelector(".g").style.width = (g / d.cards.length * 100) + "%";
-        el.querySelector(".a").style.width = (a / d.cards.length * 100) + "%";
+        el.querySelector(".pct").innerHTML = `${Math.round(g / d.cards.length * 100)}<small>% gewusst</small>`;
+        el.querySelector(".meta").textContent = `${d.cards.length} Karten · ${a} zum Wiederholen`;
+        el.querySelector(".bg").style.width = (g / d.cards.length * 100) + "%";
+        el.querySelector(".ba").style.width = (a / d.cards.length * 100) + "%";
       } catch (e) { /* Kachel bleibt ohne Zahlen */ }
     }
   }
@@ -101,8 +110,9 @@
       mode: "learn",
       active: new Set(topics.map(t => t.id)),
       onlyOpen: false,
-      deck: [], idx: 0, flipped: false, query: ""
+      deck: [], idx: 0, flipped: false, query: "", streak: 0
     };
+    setTheme(deck.meta);
 
     document.title = deck.title + " · Karteikarten";
     crumb.textContent = deck.title;
@@ -132,7 +142,8 @@
       const p = pool();
       const g = p.filter(c => progress[c.id] === "good").length;
       const a = p.filter(c => progress[c.id] === "again").length;
-      $("#stats").innerHTML = `<b>${g}</b> gewusst · <b>${a}</b> nochmal · ${p.length - g - a} neu<br>von ${p.length} Karten`;
+      $("#stats").innerHTML = `<span class="pill pg">✓ ${g} gewusst</span><span class="pill pa">↺ ${a} nochmal</span><span class="pill pn">${p.length - g - a} neu</span>` +
+        (S.streak >= 2 ? `<span class="pill streak" id="streak">🔥 ${S.streak} in Folge</span>` : "");
       const bg = $("#barG"), ba = $("#barA");
       if (bg) { bg.style.width = (p.length ? g / p.length * 100 : 0) + "%"; ba.style.width = (p.length ? a / p.length * 100 : 0) + "%"; }
     }
@@ -143,9 +154,10 @@
       f.innerHTML = "";
       const mk = (label, pressed, onclick, color) => {
         const b = document.createElement("button");
-        b.className = "chip";
+        b.className = color ? "chip" : "chip all";
+        if (color) b.style.setProperty("--t", color);
         b.setAttribute("aria-pressed", pressed);
-        b.innerHTML = (color ? `<span class="dot" style="background:${esc(color)}"></span>` : "") + esc(label);
+        b.innerHTML = (color ? `<span class="dot"></span>` : "") + esc(label);
         b.onclick = onclick; f.appendChild(b);
       };
       mk("Alle", all, () => { S.active = new Set(topics.map(t => t.id)); rebuild(); });
@@ -178,7 +190,7 @@
           <button class="btn-ghost" id="shuffle">Mischen</button>
           <button class="btn-ghost" id="reset">Fortschritt zurücksetzen</button>
         </div>
-        <div class="bar" aria-hidden="true"><span class="g" id="barG"></span><span class="a" id="barA"></span></div>
+        <div class="bar" aria-hidden="true"><span class="bg" id="barG"></span><span class="ba" id="barA"></span></div>
         <div id="stage"></div>
         <div class="nav">
           <button class="big again" id="btnAgain">Nochmal</button>
@@ -213,18 +225,19 @@
       const has = S.deck.length > 0 && S.idx < S.deck.length;
       ["#btnAgain", "#btnFlip", "#btnGood", "#prev", "#next"].forEach(s => $(s).disabled = !has);
       if (!has) {
-        st.innerHTML = `<div class="done"><h2>${S.deck.length ? "Stapel durch" : (S.onlyOpen ? "Alles gewusst" : "Keine Karten")}</h2>
+        st.innerHTML = `<div class="done"><h2>${S.deck.length ? "Stapel durch! 🎉" : (S.onlyOpen ? "Alles gewusst! 🎉" : "Keine Karten")}</h2>
           <p class="sub">${S.onlyOpen ? "Keine offenen Karten in dieser Auswahl." : "Misch neu oder wähle andere Themen."}</p>
           <p><button class="btn-ghost" id="restart">Von vorn</button></p></div>`;
         $("#pos").textContent = "";
         $("#restart").onclick = rebuild;
+        if (S.deck.length || S.onlyOpen) confetti(st.querySelector(".done"));
         return;
       }
       const c = S.deck[S.idx], t = topicOf(c.topic);
       const mark = progress[c.id] === "good" ? " · gewusst" : progress[c.id] === "again" ? " · nochmal" : "";
-      st.innerHTML = `<div class="scene"><div class="card ${S.flipped ? "flipped" : ""}" id="card" tabindex="0" role="button" aria-label="Karte umdrehen">
-        <div class="face front"><span class="tag"><span class="dot" style="background:${esc(t.color)}"></span>${esc(t.label)}${mark}</span><div class="q">${c.q}</div><span class="hint">Tippen oder Leertaste zum Umdrehen</span></div>
-        <div class="face back"><span class="tag"><span class="dot" style="background:${esc(t.color)}"></span>${esc(t.label)} · Antwort</span><div class="a">${c.a}</div></div>
+      st.innerHTML = `<div class="scene enter"><div class="card ${S.flipped ? "flipped" : ""}" id="card" tabindex="0" role="button" aria-label="Karte umdrehen" style="--t:${esc(t.color)}">
+        <div class="face front"><span class="tag"><span class="dot"></span>${esc(t.label)}${mark}</span><div class="q">${c.q}</div><span class="hint">Tippen oder Leertaste zum Umdrehen</span></div>
+        <div class="face back"><span class="tag"><span class="dot"></span>${esc(t.label)} · Antwort</span><div class="a">${c.a}</div></div>
       </div></div>`;
       const card = $("#card");
       math(card);
@@ -238,15 +251,43 @@
 
     function flip() { if (!S.deck.length || S.idx >= S.deck.length) return; S.flipped = !S.flipped; $("#card")?.classList.toggle("flipped", S.flipped); }
     function go(d) { if (!S.deck.length) return; S.idx = Math.min(Math.max(S.idx + d, 0), S.deck.length - 1); S.flipped = false; drawCard(); }
+    let busy = false;
     function rate(v) {
-      if (!S.deck.length || S.idx >= S.deck.length) return;
+      if (busy || !S.deck.length || S.idx >= S.deck.length) return;
       const c = S.deck[S.idx]; progress[c.id] = v; save();
+      S.streak = v === "good" ? S.streak + 1 : 0;
+      const scene = $("#stage .scene");
+      const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (scene && !reduce) {
+        busy = true;
+        scene.classList.remove("enter");
+        scene.classList.add(v === "good" ? "out-good" : "out-again");
+        setTimeout(() => { busy = false; advance(c, v); }, 260);
+      } else advance(c, v);
+    }
+    function advance(c, v) {
       if (v === "again") {
         const card = S.deck.splice(S.idx, 1)[0];
         S.deck.splice(Math.min(S.deck.length, S.idx + 3 + Math.floor(Math.random() * 4)), 0, card);
       } else if (S.onlyOpen) S.deck.splice(S.idx, 1);
       else S.idx++;
       S.flipped = false; drawCard();
+      const sk = $("#streak"); if (sk && v === "good") sk.classList.add("bump");
+    }
+
+    function confetti(host) {
+      if (!host || (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches)) return;
+      const cols = ["#ffd43b", "#ff6b6b", "#69db7c", "#4dabf7", "#f783ac", "#ffffff", "#ffa94d"];
+      for (let i = 0; i < 70; i++) {
+        const p = document.createElement("span");
+        p.className = "confetti";
+        p.style.left = Math.random() * 100 + "%";
+        p.style.background = cols[i % cols.length];
+        p.style.animationDuration = (1.6 + Math.random() * 1.8) + "s";
+        p.style.animationDelay = (Math.random() * .6) + "s";
+        p.style.transform = `rotate(${Math.random() * 360}deg)`;
+        host.appendChild(p);
+      }
     }
 
     // ----- list mode -----
@@ -264,7 +305,8 @@
       list.innerHTML = items.map(c => {
         const t = topicOf(c.topic);
         const s = progress[c.id] === "good" ? "gewusst" : progress[c.id] === "again" ? "nochmal" : "";
-        return `<details class="item"><summary><span class="dot" style="background:${esc(t.color)}"></span><span class="qt">${c.q}</span><span class="st">${s}</span></summary><div class="a">${c.a}</div></details>`;
+        const cls = progress[c.id] === "good" ? "good" : progress[c.id] === "again" ? "again" : "";
+        return `<details class="item" style="--t:${esc(t.color)}"><summary><span class="qt">${c.q}</span>${s ? `<span class="st ${cls}">${s}</span>` : ""}</summary><div class="a">${c.a}</div></details>`;
       }).join("");
       math(list);
     }

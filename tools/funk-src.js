@@ -3,13 +3,13 @@
 const R = String.raw;
 
 const topics = [
-  { id: "vl1", label: "VL1 Signale", color: "#8a6d1f" },
-  { id: "vl2", label: "VL2 Maxwell", color: "#a1502c" },
-  { id: "vl3", label: "VL3 Antennen", color: "#1f6f78" },
-  { id: "vl4", label: "VL4 Funkkanal", color: "#1f4e8c" },
-  { id: "vl5", label: "VL5 Signalverarbeitung", color: "#5a4a9c" },
-  { id: "vl6", label: "VL6 WLAN", color: "#7a3d8c" },
-  { id: "vl7", label: "VL7 Mobilfunk", color: "#b0436b" }
+  { id: "vl1", label: "VL1 Signale", color: "#f59f00" },
+  { id: "vl2", label: "VL2 Maxwell", color: "#12b886" },
+  { id: "vl3", label: "VL3 Antennen", color: "#4c6ef5" },
+  { id: "vl4", label: "VL4 Funkkanal", color: "#7950f2" },
+  { id: "vl5", label: "VL5 Signalverarbeitung", color: "#e64980" },
+  { id: "vl6", label: "VL6 WLAN", color: "#fd7e14" },
+  { id: "vl7", label: "VL7 Mobilfunk", color: "#15aabf" }
 ];
 
 const cards = [
