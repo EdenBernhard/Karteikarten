@@ -1,0 +1,593 @@
+{
+ "id": "wan",
+ "title": "Weitverkehrsnetze (WAN)",
+ "topics": [
+  {
+   "id": "s1",
+   "label": "S1 Grundlagen",
+   "color": "#8a6d1f"
+  },
+  {
+   "id": "s2",
+   "label": "S2 Glasfaser & Seekabel",
+   "color": "#1f6f78"
+  },
+  {
+   "id": "mpls",
+   "label": "S3 MPLS",
+   "color": "#1f4e8c"
+  },
+  {
+   "id": "evpn",
+   "label": "S3 Overlay & EVPN",
+   "color": "#2f6db5"
+  },
+  {
+   "id": "bgp",
+   "label": "S4 BGP",
+   "color": "#7a3d8c"
+  },
+  {
+   "id": "sdwan",
+   "label": "S4 SD-WAN",
+   "color": "#9b4f8f"
+  },
+  {
+   "id": "zt",
+   "label": "S4 ZTNA & SASE",
+   "color": "#b0436b"
+  }
+ ],
+ "cards": [
+  {
+   "topic": "s1",
+   "q": "Nenne die wichtigsten Unterschiede zwischen Leitungs- und Paketvermittlung.",
+   "a": "<table><tr><th></th><th>Leitung</th><th>Paket</th></tr>\n<tr><td>Verbindung</td><td>feste Leitung für die ganze Dauer</td><td>jedes Paket einzeln geroutet</td></tr>\n<tr><td>Ressourcen</td><td>reserviert, auch in Pausen</td><td>nach Bedarf, Best Effort</td></tr>\n<tr><td>Verzögerung</td><td>konstant, gering</td><td>variabel (Jitter)</td></tr>\n<tr><td>Effizienz</td><td>gering</td><td>hoch, Leitungen geteilt</td></tr>\n<tr><td>Beispiel</td><td>PSTN, ISDN</td><td>Internet, IP, MPLS</td></tr></table>"
+  },
+  {
+   "topic": "s1",
+   "q": "Warum entsteht bei Paketvermittlung Jitter?",
+   "a": "<p>Pakete teilen sich die Leitungen statistisch und warten unterschiedlich lange in Warteschlangen, eventuell auch auf verschiedenen Wegen. Die Verzögerung schwankt also von Paket zu Paket.</p><p>Folge: Für Echtzeitverkehr braucht man QoS, Puffer und Messung.</p>"
+  },
+  {
+   "topic": "s1",
+   "q": "Frame Relay: Wie funktioniert es, und warum hat es weniger Overhead als X.25?",
+   "a": "<ul><li>paketvermittelt, variable Rahmenlänge</li><li>virtuelle Verbindungen (PVC/SVC), gekennzeichnet durch <b>DLCI</b></li><li>56 kbit/s bis wenige Mbit/s</li></ul><p><b>Weniger Overhead:</b> Die Fehlerkorrektur wanderte vom Netz ins Endgerät.</p><p>Ab 2000 von MPLS/IP-VPN abgelöst.</p>"
+  },
+  {
+   "topic": "s1",
+   "q": "ATM: Wie groß ist eine Zelle, und womit wird adressiert?",
+   "a": "<p>Feste <b>53-Byte-Zellen</b>: 48 Byte Payload + 5 Byte Header.</p><p>Verbindungsorientiert mit <b>VPI/VCI</b> (Virtual Path / Virtual Channel Identifier).</p><p>QoS-Klassen: CBR, VBR, ABR, UBR.</p>"
+  },
+  {
+   "topic": "s1",
+   "q": "Was ist der Vorteil und der Nachteil der festen ATM-Zellgröße?",
+   "a": "<p><b>Vorteil:</b> geringe, vorhersagbare Latenz, Hardware-Switching ist einfach.</p><p><b>Nachteil:</b> komplex und teuer; bei großen Paketen viel Header-Overhead („Cell Tax“). Heute von IP/MPLS und Carrier Ethernet verdrängt.</p>"
+  },
+  {
+   "topic": "s1",
+   "q": "SONET und SDH: Was ist das, und was ist der Unterschied?",
+   "a": "<p>Synchrones, hierarchisches Multiplexing über Glasfaser; tragende Transportebene bis in die 2000er.</p><ul><li><b>SONET</b> = ANSI, Nordamerika</li><li><b>SDH</b> = ITU-T, international</li></ul><p>Ringtopologie mit Schutzschaltung in <b>50 ms</b>. Später durch IP/MPLS und OTN ersetzt.</p>"
+  },
+  {
+   "topic": "s1",
+   "q": "Was macht ein WAN-Multiplexer?",
+   "a": "<p>Er bündelt mehrere Datenströme auf <b>eine</b> physische Leitung und trennt sie am Ziel wieder (Demultiplexing).</p>"
+  },
+  {
+   "topic": "s1",
+   "q": "Nenne drei Multiplexing-Verfahren im WAN mit Beispiel.",
+   "a": "<ul><li><b>TDM</b>: feste Zeitschlitze pro Strom (ISDN, T1, E1), legacy</li><li><b>Statistisches Multiplexing</b>: Bandbreite nach tatsächlichem Bedarf (Frame Relay, MPLS)</li><li><b>WDM</b>: mehrere Wellenlängen auf einer Glasfaser (CWDM, DWDM …)</li></ul>"
+  },
+  {
+   "topic": "s1",
+   "q": "Warum ist statistisches Multiplexing effizienter als TDM?",
+   "a": "<p>TDM reserviert jedem Strom seinen Zeitschlitz, auch wenn er gerade nichts sendet. Statistisches Multiplexing vergibt die Kapazität nur an Ströme, die tatsächlich Daten haben. Leerlauf wird so von anderen genutzt.</p>"
+  },
+  {
+   "topic": "s1",
+   "q": "Ordne zu: Bridge/Switch, Router, L3-Switch, Fritz!Box.",
+   "a": "<ul><li><b>Bridge / L2-Switch:</b> leitet nach MAC-Adressen weiter (Layer 2)</li><li><b>Router:</b> leitet nach IP-Adressen zwischen Netzen weiter (Layer 3)</li><li><b>L3-Switch:</b> Switch mit Routing-Funktion in Hardware</li><li><b>Fritz!Box:</b> Heimrouter mit Modem (DSL, Kabel, Glasfaser oder Mobilfunk), Switch, WLAN-AP, Firewall</li></ul><p>Repeater und Hub sind legacy.</p>"
+  },
+  {
+   "topic": "s2",
+   "q": "Was ist Modendispersion, und welche Folge hat sie?",
+   "a": "<p>In einer Multimode-Faser laufen Lichtstrahlen auf verschieden langen Wegen und kommen zeitversetzt an. Der Impuls verschmiert.</p><p>Folge: <b>Intersymbolinterferenz</b> → höhere Bitfehlerrate → begrenzte Reichweite und Datenrate.</p>"
+  },
+  {
+   "topic": "s2",
+   "q": "Step-Index vs. Graded-Index-Multimodefaser?",
+   "a": "<ul><li><b>Step-Index:</b> Brechungsindex springt an der Kern-Mantel-Grenze. Licht läuft per Totalreflexion im Zickzack → starke Modendispersion, &lt; 100 m.</li><li><b>Graded-Index:</b> Brechungsindex nimmt nach außen allmählich ab. Licht wird sinusförmig gebogen und läuft außen schneller → Laufzeiten gleichen sich aus, einige 100 m.</li></ul>"
+  },
+  {
+   "topic": "s2",
+   "q": "Multimode vs. Singlemode: Kerndurchmesser, Reichweite, Einsatz?",
+   "a": "<table><tr><th></th><th>Multimode</th><th>Singlemode</th></tr>\n<tr><td>Kern</td><td>50 / 62,5 µm</td><td>8–10 µm</td></tr>\n<tr><td>Reichweite</td><td>bis einige 100 m</td><td>viele km</td></tr>\n<tr><td>Klassen</td><td>OM1–OM5</td><td>OS1, OS2</td></tr>\n<tr><td>Einsatz</td><td>Gebäude, Rechenzentrum</td><td>Telekommunikation, WAN</td></tr></table><p>Singlemode hat keine Modendispersion, weil nur ein Strahl läuft.</p>"
+  },
+  {
+   "topic": "s2",
+   "q": "Was ist POF, und warum ist sie für das WAN ungeeignet?",
+   "a": "<p>Polymere optische Faser (Kunststoff), Kern ca. 1.000 µm, Stufenindex.</p><p>Sehr hohe Dämpfung (~10 dB/100 m), deshalb Reichweite deutlich unter 100 m. Einsatz: Heim, Auto, Industrie.</p>"
+  },
+  {
+   "topic": "s2",
+   "q": "OS1 vs. OS2?",
+   "a": "<ul><li><b>OS1</b> ≈ G.652A/B, ~1 dB/km, für Gebäude</li><li><b>OS2</b> ≈ G.652C/D (Low Water Peak), &lt; 0,4 dB/km, für Außen- und Fernleitungen, heute Standard</li></ul><p>Beide brauchen Laser als Lichtquelle, keine LED.</p>"
+  },
+  {
+   "topic": "s2",
+   "q": "Was bedeutet „Low Water Peak“ (G.652C/D)?",
+   "a": "<p>Bei normaler Faser verursachen OH⁻-Ionen eine Dämpfungsspitze bei 1383 nm. Low-Water-Peak-Fasern entschärfen sie, sodass der ganze Bereich <b>1260–1625 nm</b> nutzbar ist. Das ist wichtig für CWDM.</p><p>G.657 dagegen steht für biegeunempfindliche Faser.</p>"
+  },
+  {
+   "topic": "s2",
+   "q": "Nenne die vier Glasfaser-Steckertypen und ihre Verbreitung.",
+   "a": "<ul><li><b>LC</b>: 1,25 mm Ferrule, ~65 %</li><li><b>SC</b>: 2,5 mm Ferrule, ~25 %</li><li><b>MTP/MPO</b>: 12, 24+ Fasern, ~10 %, Rechenzentren 40/100G</li><li><b>ST/FC</b>: legacy, ~0 %</li></ul>"
+  },
+  {
+   "topic": "s2",
+   "q": "Was ist ein Polaritätsfehler, und welche MTP-Kabeltypen gibt es?",
+   "a": "<p>Eine Verbindung braucht zwei Fasern (A→B und B→A). Werden sie vertauscht, sendet der Sender auf den Sender des Gegenübers: Polaritätsfehler.</p><ul><li><b>Typ A</b>: Key Up ↔ Key Down</li><li><b>Typ B</b>: beidseitig Key Up</li><li><b>Typ C</b>: paarweise gekreuzt (&lt; 1 %)</li></ul>"
+  },
+  {
+   "topic": "s2",
+   "q": "Wie funktioniert WDM, und welche Komponenten braucht es?",
+   "a": "<p>Jede Wellenlänge λ ist ein eigener Kanal. So vervielfacht sich die Datenrate, ohne neue Fasern zu verlegen.</p><ol><li>Transceiver/Laser je Wellenlänge</li><li>Multiplexer (MUX) fasst die λ zusammen</li><li>Faser, optional mit optischen Verstärkern (EDFA, Raman)</li><li>Demultiplexer (DEMUX) trennt sie wieder</li></ol>"
+  },
+  {
+   "topic": "s2",
+   "q": "CWDM vs. DWDM: Kanäle, Abstand, Reichweite, Verstärkung, Einsatz?",
+   "a": "<table><tr><th></th><th>CWDM</th><th>DWDM</th></tr>\n<tr><td>λ-Bereich</td><td>1270–1610 nm</td><td>1528–1565 nm</td></tr>\n<tr><td>Kanäle</td><td>18</td><td>40–96</td></tr>\n<tr><td>Abstand</td><td>20 nm</td><td>0,8–0,4 nm</td></tr>\n<tr><td>Reichweite</td><td>~80 km</td><td>&gt; 1.000 km</td></tr>\n<tr><td>Verstärkung</td><td>begrenzt</td><td>ja (EDFA, Raman)</td></tr>\n<tr><td>Einsatz</td><td>Metro, mittel teuer</td><td>Backbone, teuer</td></tr></table>"
+  },
+  {
+   "topic": "s2",
+   "q": "SWDM und LWDM: Wofür?",
+   "a": "<ul><li><b>SWDM</b>: Multimode OM4/OM5, 850–950 nm, 4 Kanäle à 30 nm, 150 m, günstig → Rechenzentrum</li><li><b>LWDM</b>: Singlemode OS2, 1260–1330 nm, 4 Kanäle à 4 nm, 10 km → LAN/WAN</li></ul>"
+  },
+  {
+   "topic": "s2",
+   "q": "Welchen Anteil am weltweiten Datenverkehr tragen Seekabel?",
+   "a": "<p><b>Über 97 %</b>, nicht die Satelliten.</p><p>Mehr als 600 Systeme mit über 1,5 Mio. km; 71 % der Kapazität nutzen Amazon, Google, Meta und Microsoft. Seekabel sind kritische Infrastruktur (Sabotage, Datenhoheit).</p>"
+  },
+  {
+   "topic": "s2",
+   "q": "Faustregel für die Latenz in Glasfaser? Rechne London–New York.",
+   "a": "<p>Licht läuft in Glas mit v = c/n ≈ 200.000 km/s (n ≈ 1,47).</p><p><b>1.000 km ≈ 5 ms one way ≈ 10 ms RTT.</b></p><p>London–New York: ~32 ms one way, ~64 ms RTT.</p><p>Zusätzlich: Umwege der Route, Signalverarbeitung (FEC, O/E/O), Geräte an Land.</p>"
+  },
+  {
+   "topic": "s2",
+   "q": "Seekabel vs. Satellit: Wer hat die geringere Latenz?",
+   "a": "<table><tr><th>Verbindung</th><th>RTT (technisch)</th></tr>\n<tr><td>LEO (~500 km)</td><td>~3–5 ms</td></tr><tr><td>MEO (~10.000 km)</td><td>~66 ms</td></tr><tr><td>GEO (~35.800 km)</td><td>~240 ms</td></tr>\n<tr><td>Seekabel transatlantisch (6.500 km)</td><td>~66 ms</td></tr><tr><td>Seekabel Frankfurt–Singapur (19.000 km)</td><td>~190 ms</td></tr></table>\n<p>Seekabel sind schneller als GEO und bei Bandbreite und Kosten unschlagbar. LEO ist ähnlich schnell, hat aber viel weniger Kapazität.</p>"
+  },
+  {
+   "topic": "s2",
+   "q": "Wie ist ein Seekabel aufgebaut (von innen nach außen)?",
+   "a": "<ol><li>Glasfasern (mehrere Paare)</li><li>Gelschicht (Feuchtigkeitsschutz)</li><li>Kupferleiter (Stromversorgung der Repeater)</li><li>Stahlarmierung</li><li>Außenmantel</li></ol><p>Durchmesser 17–50 mm. Risiken: Fischerei, Anker, Beben, Sabotage → Tiefverlegung, Routenredundanz.</p>"
+  },
+  {
+   "topic": "s2",
+   "q": "Wie werden die Repeater eines Seekabels mit Strom versorgt?",
+   "a": "<ul><li>Repeater alle <b>70–100 km</b>, in Reihe auf einem Gleichstromkreis über den Kupferleiter</li><li>Das <b>Meer ist der Rückleiter</b></li><li><b>Dual-End Feeding</b> (Standard): beide Landstationen speisen, z. B. +5 kV / −5 kV → halbe Spannung pro Seite, Ausfallsicherheit</li></ul><p>Beispiel: 10.000 V × 1,3 A = 13 kW Dauerleistung.</p>"
+  },
+  {
+   "topic": "s2",
+   "q": "Wie funktioniert ein EDFA?",
+   "a": "<p><b>Erbium-Doped Fiber Amplifier</b>: Ein Pumplaser (980 oder 1480 nm) regt Erbium-Ionen in einem Faserstück an. Das 1550-nm-Signal löst <b>stimulierte Emission</b> aus und wird um 20–30 dB verstärkt.</p>"
+  },
+  {
+   "topic": "s2",
+   "q": "Warum braucht man EDFAs, und was ist ihr großer Vorteil?",
+   "a": "<p>Bei 0,2 dB/km bleibt nach 80 km nur ~1 % der Leistung übrig.</p><p><b>Vorteil:</b> rein optische Verstärkung ohne O/E/O-Wandlung, und zwar für <b>alle WDM-Kanäle gleichzeitig</b>.</p>"
+  },
+  {
+   "topic": "mpls",
+   "q": "Was ist die Grundidee von MPLS, und warum entstand es?",
+   "a": "<p>Ende der 1990er war Hop-by-Hop-IP-Routing für große Carrier zu langsam und unflexibel. Gleichzeitig wuchs der Bedarf an VPNs, QoS und Traffic Engineering.</p><p><b>Idee:</b> Am Rand wird einmal entschieden, welchen Pfad ein Paket nimmt. Danach wird nur noch per kurzem <b>Label</b> geswitcht.</p>"
+  },
+  {
+   "topic": "mpls",
+   "q": "Warum nennt man MPLS „Layer 2.5“?",
+   "a": "<p>Der MPLS-Header (Shim-Header) sitzt <b>zwischen</b> dem Layer-2-Header und dem Layer-3-Paket. MPLS ist kein eigenes Transportprotokoll, sondern eine Erweiterung und unabhängig vom Medium.</p>"
+  },
+  {
+   "topic": "mpls",
+   "q": "Aus welchen Feldern besteht der MPLS-Header (mit Bitlängen)?",
+   "a": "<p>4 Byte = 32 Bit:</p><ul><li><b>Label</b>: 20 Bit</li><li><b>TC/EXP</b>: 3 Bit (Traffic Class, QoS)</li><li><b>S / BoS</b>: 1 Bit (Bottom of Stack, letztes Label)</li><li><b>TTL</b>: 8 Bit</li></ul>"
+  },
+  {
+   "topic": "mpls",
+   "q": "Was ist ein Label-Stack? Was bedeuten äußeres und inneres Label?",
+   "a": "<p>Mehrere MPLS-Header hintereinander.</p><ul><li><b>Äußeres Label = Transport:</b> Pfad durch den Provider-Core (LSP)</li><li><b>Inneres Label = Service:</b> welcher Kundendienst (VPN, VPLS)</li></ul><p>Der Core sieht nur das äußere Label, das Kundennetz bleibt unsichtbar.</p>"
+  },
+  {
+   "topic": "mpls",
+   "q": "Was ist ein LSP, und welche Richtung hat er?",
+   "a": "<p><b>Label Switched Path</b>: vordefinierter Pfad vom Ingress- zum Egress-LER.</p><p>Er ist <b>unidirektional</b>. Für Hin- und Rückweg braucht man zwei LSPs. Backup-Pfade per Fast ReRoute (FRR).</p>"
+  },
+  {
+   "topic": "mpls",
+   "q": "LER vs. LSR?",
+   "a": "<ul><li><b>LER</b> (Label Edge Router, = PE-Router): am Rand des MPLS-Netzes; setzt das Label (Push) bzw. entfernt es (Pop)</li><li><b>LSR</b> (Label Switch Router, = P-Router): im Core; tauscht nur Labels (Swap)</li></ul>"
+  },
+  {
+   "topic": "mpls",
+   "q": "Was ist eine FEC?",
+   "a": "<p><b>Forwarding Equivalence Class</b>: Gruppe von Paketen mit gleichem Weiterleitungsverhalten, z. B. gleiches Zielpräfix + gleiche QoS-Klasse. Pakete einer FEC bekommen dasselbe Label.</p>"
+  },
+  {
+   "topic": "mpls",
+   "q": "Was steht in der LFIB?",
+   "a": "<p><b>Label Forwarding Information Base</b>: Eingangslabel → Ausgangslabel + Ausgangsinterface (+ Aktion Push/Swap/Pop).</p>"
+  },
+  {
+   "topic": "mpls",
+   "q": "Beschreibe Push, Swap und Pop.",
+   "a": "<ol><li><b>Push</b> am Ingress-LER: FEC bestimmen, Label setzen</li><li><b>Swap</b> an jedem LSR: Label laut LFIB tauschen</li><li><b>Pop</b> am Egress-LER oder schon am vorletzten Router: Label entfernen, danach normales IP-Routing</li></ol>"
+  },
+  {
+   "topic": "mpls",
+   "q": "LDP vs. RSVP-TE?",
+   "a": "<table><tr><th></th><th>LDP</th><th>RSVP-TE</th></tr>\n<tr><td>Aufbau</td><td>automatisch</td><td>explizit</td></tr>\n<tr><td>Pfad</td><td>folgt dem IGP (kürzester Pfad)</td><td>frei definierbar</td></tr>\n<tr><td>Bandbreite reservieren</td><td>nein</td><td>ja</td></tr>\n<tr><td>Skalierung</td><td>hoch</td><td>begrenzt</td></tr>\n<tr><td>Einsatz</td><td>Standard-MPLS</td><td>Traffic Engineering, QoS, FRR</td></tr></table>"
+  },
+  {
+   "topic": "mpls",
+   "q": "Was ist AToM, und welche zwei Labels nutzt ein Pseudowire?",
+   "a": "<p><b>Any Transport over MPLS</b>: transportiert beliebige L2-Protokolle (Ethernet, PPP, HDLC, FR, ATM) als <b>Pseudowire</b>, einen virtuellen Draht durch den MPLS-Core.</p><ul><li><b>Transport-Label</b>: LSP durch das Provider-Netz</li><li><b>VC-Label</b> (Service-Label): welcher Kundendienst</li></ul>"
+  },
+  {
+   "topic": "mpls",
+   "q": "VPWS vs. VPLS vs. L3VPN?",
+   "a": "<table><tr><th></th><th>VPWS</th><th>VPLS</th><th>L3VPN</th></tr>\n<tr><td>Schicht</td><td>L2</td><td>L2</td><td>L3</td></tr>\n<tr><td>Topologie</td><td>Punkt-zu-Punkt, „virtueller Draht“</td><td>Multipoint, „virtueller Switch“</td><td>IP-Routing</td></tr>\n<tr><td>Prinzip</td><td>1 Pseudowire</td><td>Full Mesh aus PWs, VSI pro PE</td><td>VRF pro Kunde</td></tr>\n<tr><td>Signalisierung</td><td>LDP</td><td>LDP oder BGP</td><td>MP-BGP</td></tr>\n<tr><td>MAC-Learning</td><td>nein</td><td>ja, im PE</td><td>nein</td></tr></table>"
+  },
+  {
+   "topic": "mpls",
+   "q": "Was ist eine VSI?",
+   "a": "<p><b>Virtual Switching Instance</b>: ein virtueller Ethernet-Switch im PE-Router, einer pro Kunde/Service bei VPLS. Er lernt MAC-Adressen und leitet über die Pseudowires weiter.</p>"
+  },
+  {
+   "topic": "mpls",
+   "q": "Wie arbeitet die VPLS-Data-Plane? Was ist Split Horizon?",
+   "a": "<ul><li><b>MAC-Learning:</b> Quell-MAC + Eingangsport/PW merken</li><li>bekanntes Ziel → passender Pseudowire</li><li>unbekanntes Ziel, Broadcast, Multicast → <b>Flooding</b> an alle PWs</li></ul><p><b>Split Horizon:</b> Was über einen Pseudowire hereinkommt, wird nicht in andere Pseudowires weitergeleitet. Das verhindert Loops im Full Mesh.</p>"
+  },
+  {
+   "topic": "mpls",
+   "q": "VPLS-Signalisierung: LDP (RFC 4762) vs. BGP (RFC 4761)?",
+   "a": "<ul><li><b>LDP:</b> einfach, aber jeder PE muss alle anderen kennen (Full Mesh, statisch) → begrenzte Skalierung, Metro/Enterprise</li><li><b>BGP:</b> findet Mitglieder automatisch (Auto-Discovery), skaliert sehr gut → große Provider</li></ul>"
+  },
+  {
+   "topic": "mpls",
+   "q": "MPLS QoS: Womit wird markiert, welche Klassen gibt es?",
+   "a": "<p>3 <b>TC-Bits</b> pro Label (8 Klassen).</p><ul><li><b>EF</b> (5): Voice</li><li><b>AF</b> (3–4): Video, ERP</li><li><b>CS</b> (1–2): Batch</li><li><b>BE</b> (0): Web, E-Mail</li></ul><p>Mechanismen: Classification (DSCP → TC), Marking, Policing, Queuing, Shaping.</p><div class=\"tip\">Laut Konzeption nur „kurz, nicht viel“.</div>"
+  },
+  {
+   "topic": "mpls",
+   "q": "MPLS OAM: Welche drei Werkzeuge gibt es?",
+   "a": "<ul><li><b>LSP Ping:</b> prüft, ob ein LSP funktioniert</li><li><b>MPLS Traceroute:</b> zeigt alle LSRs auf dem Pfad (per TTL)</li><li><b>BFD:</b> Kontrollpakete z. B. alle 10 ms, erkennt Ausfälle in &lt; 50 ms → schnelle Umschaltung per FRR</li></ul>"
+  },
+  {
+   "topic": "mpls",
+   "q": "Welche Grenzen von VPLS führten zu EVPN?",
+   "a": "<ul><li>MAC-Learning per <b>Flooding</b> in der Data Plane</li><li><b>Full Mesh</b> aus Pseudowires nötig</li><li>kein natives <b>Multihoming</b> (nur STP, MC-LAG)</li><li>viel <b>manuelle Konfiguration</b> auf vielen PEs</li></ul>"
+  },
+  {
+   "topic": "evpn",
+   "q": "Overlay vs. Underlay?",
+   "a": "<ul><li><b>Underlay:</b> physisches Transportnetz (z. B. MPLS- oder IP-Backbone)</li><li><b>Overlay:</b> logische, voneinander isolierte Netze, die per Tunnel darübergelegt werden</li></ul><p>Grundidee der SD-Integration: Control Plane und Data Plane trennen; Steuerung zentral und automatisiert.</p>"
+  },
+  {
+   "topic": "evpn",
+   "q": "GRE: Prinzip, Stärke, Schwäche?",
+   "a": "<p><b>Generic Routing Encapsulation</b> (RFC 2784): kapselt L2/L3 in IP.</p><p><b>Stärke:</b> einfach, universell.</p><p><b>Schwäche:</b> keine Tenant-ID, kein MAC-Learning, nur Punkt-zu-Punkt.</p>"
+  },
+  {
+   "topic": "evpn",
+   "q": "VXLAN: Kapselung, Kennung, Endpunkte, Schwäche?",
+   "a": "<ul><li>L2-Frames in <b>UDP/IP</b>, Port <b>4789</b> (RFC 7348)</li><li><b>VNI</b>: 24 Bit → ~16 Mio. Netze</li><li>Endpunkte heißen <b>VTEPs</b></li><li>Stärke: Skalierung, Multitenancy, Cloud</li><li>Schwäche: keine eigene Control Plane, lernt per Flooding</li></ul>"
+  },
+  {
+   "topic": "evpn",
+   "q": "Was ist die Grundidee von EVPN?",
+   "a": "<p>EVPN ist eine <b>BGP-Control-Plane</b> für Ethernet-Dienste. MAC- und IP-Adressen werden per <b>MP-BGP verteilt</b>, statt in der Data Plane per Flooding gelernt zu werden.</p><p>Data Plane wahlweise MPLS, VXLAN, NVGRE oder Geneve. Nachfolger von VPLS.</p>"
+  },
+  {
+   "topic": "evpn",
+   "q": "Nenne die fünf EVPN-Route-Types.",
+   "a": "<ol><li>Ethernet Auto-Discovery (ESI/EVI)</li><li><b>MAC/IP Advertisement</b> (der wichtigste)</li><li>Inclusive Multicast (Flooding-Steuerung)</li><li>Ethernet Segment (Multihoming, DF-Wahl)</li><li>IP-Präfix</li></ol>"
+  },
+  {
+   "topic": "evpn",
+   "q": "Was bedeuten EVI, RD, RT und ESI?",
+   "a": "<ul><li><b>EVI</b>: EVPN Instance, virtuelle Switching-Domäne je Kunde</li><li><b>RD</b>: Route Distinguisher, macht Routen der EVI eindeutig</li><li><b>RT</b>: Route Target, steuert Import/Export</li><li><b>ESI</b>: Ethernet Segment Identifier (10 Byte), kennzeichnet ein Multihoming-Segment</li></ul>"
+  },
+  {
+   "topic": "evpn",
+   "q": "Was ist ARP/NDP Suppression?",
+   "a": "<p>Der PE kennt durch BGP Type 2 die MAC-IP-Zuordnungen und beantwortet ARP-Requests <b>lokal</b> (Proxy-ARP), statt sie durchs Netz zu fluten.</p><p>Ergebnis: bis zu 90 % weniger ARP-Traffic.</p>"
+  },
+  {
+   "topic": "evpn",
+   "q": "Wie funktioniert Multihoming mit ESI und Designated Forwarder?",
+   "a": "<ul><li>Ein CE hängt an mehreren PEs. Alle PEs am selben Segment tragen dasselbe <b>ESI</b> → sie wissen, dass sie zusammengehören (Route Type 4).</li><li>Pro VLAN leitet nur der <b>Designated Forwarder</b> Broadcast/unbekannten Verkehr zum CE → keine Loops, keine Duplikate.</li><li>Ausfall: Neuwahl in &lt; 1 s via BFD.</li></ul>"
+  },
+  {
+   "topic": "evpn",
+   "q": "VPLS vs. EVPN?",
+   "a": "<table><tr><th></th><th>VPLS</th><th>EVPN</th></tr>\n<tr><td>Control Plane</td><td>LDP/BGP, statisch</td><td>MP-BGP, dynamisch</td></tr>\n<tr><td>MAC-Learning</td><td>Data Plane (Flooding)</td><td>Control Plane (Type 2)</td></tr>\n<tr><td>Redundanz</td><td>STP, MC-LAG</td><td>ESI + DF</td></tr>\n<tr><td>Failover</td><td>Sekunden</td><td>&lt; 1 s</td></tr>\n<tr><td>Data Plane</td><td>MPLS</td><td>MPLS, VXLAN, NVGRE, Geneve</td></tr></table>"
+  },
+  {
+   "topic": "evpn",
+   "q": "Netconf und YANG: Wer macht was?",
+   "a": "<ul><li><b>Netconf</b> (RFC 6241): Protokoll zur Gerätekonfiguration über SSH, mit Transaktionen (Commit, Rollback). Ersetzt CLI.</li><li><b>YANG:</b> Datenmodellierungssprache, beschreibt die Struktur der Konfiguration (z. B. EVPN-Dienst mit VNI, RT, VLAN, QoS).</li></ul>"
+  },
+  {
+   "topic": "evpn",
+   "q": "Was ist MEF LSO?",
+   "a": "<p><b>Lifecycle Service Orchestration</b>: automatisiert den Lebenszyklus eines Dienstes über offene APIs, auch über Domänen und Provider hinweg.</p><p>Bestellung → Provisionierung → Aktivierung → Monitoring → Änderung → Abschaltung.</p><p>Kette: Kunde → LSO-API → Service Orchestrator → Domain Controller → Geräte.</p>"
+  },
+  {
+   "topic": "evpn",
+   "q": "Klassisches WAN vs. SD-Overlay (EVPN/VXLAN/SDN)?",
+   "a": "<table><tr><th></th><th>Klassisch</th><th>SD-Overlay</th></tr>\n<tr><td>Steuerung</td><td>dezentral pro PE</td><td>zentral (Controller, LSO)</td></tr>\n<tr><td>Provisionierung</td><td>manuell per CLI</td><td>automatisiert (Netconf/YANG, REST)</td></tr>\n<tr><td>MAC-Learning</td><td>Flooding</td><td>BGP Control Plane</td></tr>\n<tr><td>Redundanz</td><td>STP, MC-LAG</td><td>ESI + DF</td></tr></table>"
+  },
+  {
+   "topic": "evpn",
+   "q": "(Zur Sicherheit) Welche vier MEF-Diensttypen gibt es?",
+   "a": "<ul><li><b>E-Line:</b> Punkt-zu-Punkt (1↔1)</li><li><b>E-LAN:</b> Multipoint (n↔n)</li><li><b>E-Tree:</b> Root-Leaf, Hub-and-Spoke (1↔n)</li><li><b>E-Access:</b> Zugang zwischen Carriern (UNI↔ENNI)</li></ul><div class=\"tip warn\">Carrier Ethernet ist gestrichen, „MEF“ steht aber handschriftlich auf dem Blatt zu Session 1.</div>"
+  },
+  {
+   "topic": "bgp",
+   "q": "Was ist ein Autonomes System (AS)?",
+   "a": "<p>Eine Menge von Routern und Netzen unter <b>gemeinsamer Verwaltung</b> mit einheitlicher Routing-Policy. Was intern läuft (IGP), interessiert BGP nicht.</p>"
+  },
+  {
+   "topic": "bgp",
+   "q": "Welche AS-Nummernbereiche gibt es, und wer vergibt sie?",
+   "a": "<ul><li>16 Bit: 1–65.535, privat <b>64.512–65.534</b></li><li>32 Bit (seit 2007): privat 4.200.000.000–4.294.967.294</li></ul><p>Vergabe: IANA → RIR (Europa: <b>RIPE NCC</b>). Voraussetzung: eigene öffentliche Netze, mehrere Upstreams, nachgewiesener Steuerungsbedarf.</p>"
+  },
+  {
+   "topic": "bgp",
+   "q": "Warum braucht man zwischen Autonomen Systemen BGP und kein IGP?",
+   "a": "<p>Im Internet gibt es keine gemeinsame Verwaltung. Entscheidend sind <b>Policy</b>, Vertrauen und Geschäftsbeziehungen (Peering, Transit), nicht nur eine Metrik.</p><p>BGP ist ein <b>Path-Vector</b>-Protokoll: Es überträgt den kompletten AS-Pfad plus Attribute.</p>"
+  },
+  {
+   "topic": "bgp",
+   "q": "Wie wird eine BGP-Session aufgebaut?",
+   "a": "<ul><li>über <b>TCP Port 179</b></li><li>Nachbarn werden <b>manuell</b> per IP konfiguriert, keine automatische Nachbarerkennung wie bei OSPF</li><li>Sessions sind langlebig</li><li>Single-Hop (direkt verbunden) oder Multi-Hop</li></ul>"
+  },
+  {
+   "topic": "bgp",
+   "q": "eBGP vs. iBGP?",
+   "a": "<ul><li><b>eBGP:</b> zwischen verschiedenen AS, Administrative Distance 20</li><li><b>iBGP:</b> innerhalb eines AS, Administrative Distance 200</li></ul><p>iBGP verteilt die extern gelernten Routen im eigenen AS.</p>"
+  },
+  {
+   "topic": "bgp",
+   "q": "Wie verhindert BGP Routing-Loops zwischen AS?",
+   "a": "<p>Jedes AS hängt seine eigene ASN an das Attribut <b>AS_PATH</b>. Findet ein AS die eigene Nummer bereits im Pfad, verwirft es die Route.</p>"
+  },
+  {
+   "topic": "bgp",
+   "q": "Was ist BGP-Hijacking? Nenne das bekannte Beispiel.",
+   "a": "<p>Ein AS kündigt ein fremdes Präfix an; BGP prüft nicht, ob es das darf.</p><p><b>2008:</b> Pakistan Telecom kündigte ein spezifischeres /24 aus YouTubes /22 an. Longest Prefix Match gewinnt → YouTube war ~2 h weltweit nicht erreichbar.</p>"
+  },
+  {
+   "topic": "bgp",
+   "q": "Was ist ein Route Leak?",
+   "a": "<p>Gelernte Routen werden an Nachbarn weitergegeben, an die sie nicht gehören (z. B. Provider-Routen an einen anderen Provider). Meist ein Konfigurationsfehler. Beispiel 2019: Verizon/Cloudflare.</p>"
+  },
+  {
+   "topic": "bgp",
+   "q": "Wie funktioniert RPKI mit Route Origin Validation?",
+   "a": "<ol><li>RIR zertifiziert die Ressourcen des Inhabers</li><li>Inhaber signiert eine <b>ROA</b>: Präfix, max. Länge, erlaubtes Origin-AS</li><li>Validator erzeugt daraus eine Liste</li><li>Router prüft jede Route: <b>Valid</b>, <b>Invalid</b> (verwerfen), <b>NotFound</b> (normal behandeln)</li></ol><p>Grenze: prüft nur das Origin-AS, nicht den Pfad (dafür BGPsec, ASPA).</p>"
+  },
+  {
+   "topic": "bgp",
+   "q": "Nenne die vier Kategorien von BGP-Pfad-Attributen mit Beispielen.",
+   "a": "<ul><li><b>Well-known mandatory:</b> jeder muss es kennen, in jedem UPDATE → AS_PATH, NEXT_HOP, ORIGIN</li><li><b>Well-known discretionary:</b> jeder kennt es, Einsatz freiwillig → LOCAL_PREF, ATOMIC_AGGREGATE</li><li><b>Optional transitive:</b> wird weitergegeben, auch wenn unbekannt → COMMUNITY, AGGREGATOR</li><li><b>Optional non-transitive:</b> nur zum direkten Nachbarn → MED, ORIGINATOR_ID, CLUSTER_LIST</li></ul>"
+  },
+  {
+   "topic": "bgp",
+   "q": "LOCAL_PREF vs. MED?",
+   "a": "<ul><li><b>LOCAL_PREF</b> (höher = besser): steuert im eigenen AS den <b>ausgehenden</b> Verkehr</li><li><b>MED</b> (niedriger = besser): Bitte an das Nachbar-AS, über welchen Link Verkehr <b>hereinkommen</b> soll; LOCAL_PREF des Nachbarn hat Vorrang</li></ul>"
+  },
+  {
+   "topic": "bgp",
+   "q": "Was ist AS-Path-Prepending?",
+   "a": "<p>Ein AS trägt seine eigene ASN mehrfach in den AS_PATH ein. Der Pfad wirkt länger und wird von anderen seltener gewählt. So beeinflusst man den <b>eingehenden</b> Verkehr.</p>"
+  },
+  {
+   "topic": "bgp",
+   "q": "BGP Best Path Selection: In welcher Reihenfolge wird geprüft?",
+   "a": "<p>Voraussetzung: NEXT_HOP erreichbar.</p><ol><li>Weight (höchster, Cisco, lokal)</li><li>LOCAL_PREF (höchster)</li><li>lokal originiert</li><li>AS_PATH (kürzester)</li><li>ORIGIN (IGP &lt; EGP &lt; Incomplete)</li><li>MED (niedrigster)</li><li>eBGP vor iBGP</li><li>niedrigste IGP-Metrik zum NEXT_HOP</li><li>ältester eBGP-Pfad</li><li>niedrigste Router-ID</li></ol><div class=\"tip\">Merkhilfe: <b>W</b>e <b>L</b>ove <b>O</b>ranges <b>AS</b> <b>O</b>ranges <b>M</b>ean <b>P</b>ure <b>R</b>efreshment</div>"
+  },
+  {
+   "topic": "bgp",
+   "q": "Was sind AFI und SAFI? Nenne Beispiele.",
+   "a": "<p>Multiprotocol-BGP überträgt mehr als IPv4. <b>AFI</b> = Address Family, <b>SAFI</b> = Subsequent AFI. Für jede Kombination eine eigene Datenbank, ausgehandelt in der OPEN-Nachricht.</p><ul><li>1/1 IPv4 Unicast</li><li>2/1 IPv6 Unicast</li><li>1/128 VPNv4 (MPLS-L3VPN)</li><li>25/70 L2VPN EVPN</li><li>16388/71 BGP-LS</li></ul>"
+  },
+  {
+   "topic": "bgp",
+   "q": "Warum verteilt man BGP-Routen nicht einfach per IGP im AS?",
+   "a": "<ul><li>~1 Mio. IPv4- und ~220.000 IPv6-Präfixe überfordern jedes IGP</li><li>IGPs entscheiden nach Metrik, nicht nach Policy</li><li>Attribute wie AS_PATH oder Communities gingen verloren</li></ul><p>Deshalb: Verteilung im AS per <b>iBGP</b>.</p>"
+  },
+  {
+   "topic": "bgp",
+   "q": "Was ist iBGP Split Horizon, und warum braucht iBGP ein Full Mesh?",
+   "a": "<p>Von einem iBGP-Peer gelernte Routen werden <b>nicht</b> an andere iBGP-Peers weitergegeben, weil der AS_PATH intern nicht wächst und Loops unerkannt blieben.</p><p>Also muss jeder mit jedem reden: <code>n·(n−1)/2</code> Sessions. 6 Router → 15 Sessions.</p>"
+  },
+  {
+   "topic": "bgp",
+   "q": "Was löst ein Route Reflector, und wie verhindert er Loops?",
+   "a": "<p>Er macht aus dem iBGP-Full-Mesh ein Hub-and-Spoke: Der RR darf Routen an seine Clients weitergeben. Nur noch <code>n−1</code> Sessions (6 Router → 5).</p><p>Loop-Schutz: <b>ORIGINATOR_ID</b> und <b>CLUSTER_LIST</b>. Alternative: Confederations.</p>"
+  },
+  {
+   "topic": "bgp",
+   "q": "Nenne die vier BGP-Nachrichtentypen.",
+   "a": "<ul><li><b>OPEN:</b> Version, ASN, Hold Time (Cisco 180 s), BGP Identifier, Capabilities</li><li><b>KEEPALIVE:</b> leer, alle 1/3 der Hold Time (60 s)</li><li><b>UPDATE:</b> Withdrawn Routes, Path Attributes, NLRI</li><li><b>NOTIFICATION:</b> Fehlercode, beendet die Session</li></ul><p>Erweiterung: ROUTE-REFRESH.</p>"
+  },
+  {
+   "topic": "bgp",
+   "q": "Nenne die Zustände der BGP Finite State Machine in Reihenfolge.",
+   "a": "<ol><li><b>Idle</b>: Start, nach Fehler 120 s warten</li><li><b>Connect</b>: TCP-Aufbau zu Port 179</li><li>(<b>Active</b>: nur wenn TCP scheitert)</li><li><b>OpenSent</b>: OPEN gesendet, Peer-OPEN prüfen</li><li><b>OpenConfirm</b>: KEEPALIVE gesendet, auf KEEPALIVE warten</li><li><b>Established</b>: UPDATEs austauschen</li></ol><p>Fehler → NOTIFICATION → Idle.</p>"
+  },
+  {
+   "topic": "bgp",
+   "q": "Was bedeutet der Zustand Active – und was, wenn eine Session ständig zwischen Connect und Active pendelt?",
+   "a": "<p>Trotz des Namens wartet der Router in Active <b>passiv</b> auf ein eingehendes TCP-SYN, weil der eigene TCP-Aufbau gescheitert ist.</p><p>Dauerhaftes Pendeln deutet auf: falsche Nachbar-IP, fehlende Route, ACL blockiert Port 179, falsche Quelladresse.</p>"
+  },
+  {
+   "topic": "bgp",
+   "q": "Was wird im Zustand OpenSent geprüft?",
+   "a": "<p>Das empfangene OPEN des Peers: BGP-Version, Quell-IP, ASN, Sicherheitsparameter und ob die Router-IDs eindeutig sind. Ist alles gültig, sendet der Router KEEPALIVE und wechselt nach OpenConfirm.</p>"
+  },
+  {
+   "topic": "sdwan",
+   "q": "Was kann klassisches BGP-Routing nicht, was SD-WAN kann?",
+   "a": "<table><tr><th>BGP/IGP</th><th>SD-WAN</th></tr>\n<tr><td>entscheidet nach Erreichbarkeit und Attributen</td><td>entscheidet nach Anwendung und Business-Intent</td></tr>\n<tr><td>reagiert nicht auf aktuelle Leitungsqualität</td><td>misst laufend Latenz, Jitter, Loss pro Pfad</td></tr>\n<tr><td>kein Blick auf Layer 7</td><td>erkennt Anwendungen (SNI, DNS, DPI)</td></tr>\n<tr><td>statische, manuelle Peerings</td><td>zentrale Orchestrierung, transportunabhängig</td></tr></table>"
+  },
+  {
+   "topic": "sdwan",
+   "q": "Ersetzt SD-WAN BGP?",
+   "a": "<p><b>Nein.</b> Das Underlay (Internet-Routing zwischen ISPs) läuft weiter über BGP. SD-WAN legt ein <b>Overlay</b> darüber und wählt pro Anwendung den besten Underlay-Pfad.</p>"
+  },
+  {
+   "topic": "sdwan",
+   "q": "Was bedeutet Transport Independence?",
+   "a": "<p>Das SD-WAN-Overlay tunnelt über <b>jede</b> Anbindung (MPLS, Breitband-Internet, LTE/5G, Satellit) und misst deren Qualität selbst. Die Edges bauen über <b>alle</b> Pfade gleichzeitig verschlüsselte Tunnel auf (IPsec/VXLAN).</p>"
+  },
+  {
+   "topic": "sdwan",
+   "q": "Control Plane vs. Data Plane im SD-WAN?",
+   "a": "<ul><li><b>Control Plane (Orchestrator/Controller):</b> verteilt die Business-Intent-Policy, sammelt Messwerte aller Edges, berechnet den besten Pfad je Anwendung</li><li><b>Data Plane (Edge):</b> erkennt Anwendungen, verschlüsselt, leitet pro Anwendung weiter, wechselt bei Grenzwertverletzung automatisch den Pfad</li></ul>"
+  },
+  {
+   "topic": "sdwan",
+   "q": "Welches Muster teilen EVPN und SD-WAN?",
+   "a": "<p><b>Overlay über Underlay</b> mit getrennter Control und Data Plane.</p><ul><li>EVPN: Steuerung per MP-BGP, Underlay MPLS oder IP</li><li>SD-WAN: Steuerung per zentralem Orchestrator, Underlay BGP-Internet, MPLS, 5G …</li></ul>"
+  },
+  {
+   "topic": "sdwan",
+   "q": "Nenne die vier Ansprüche an ein modernes SD-WAN.",
+   "a": "<ol><li><b>Secure Elastic Connectivity</b></li><li><b>Cloud-first Approach</b></li><li><b>Application Quality of Experience (AppQoE)</b></li><li><b>Agile Operations</b></li></ol>"
+  },
+  {
+   "topic": "sdwan",
+   "q": "Secure Elastic Connectivity: Was heißt „Secure“, was „Elastic“?",
+   "a": "<ul><li><b>Secure:</b> Ende-zu-Ende-Verschlüsselung (IPsec, TLS), integrierte Sicherheit</li><li><b>Elastic:</b> Transportunabhängigkeit, dynamisches Traffic Management, Skalierung, automatisches Failover auf andere Pfade</li></ul><p>Vorteil: günstiges Internet + MPLS statt teurem Nur-MPLS.</p>"
+  },
+  {
+   "topic": "sdwan",
+   "q": "Cloud-first Approach: Was bedeutet das (und was nicht)?",
+   "a": "<p>Cloud ist die <b>bevorzugte</b> Option, nicht Cloud-only.</p><p>Mittel: Direct Internet Access statt Backhauling, Performance-Monitoring, Cloud OnRamp, zentrale Orchestrierung.</p><p>SD-WAN garantiert keine optimale Cloud-Performance, es bemüht sich nur darum.</p>"
+  },
+  {
+   "topic": "sdwan",
+   "q": "AppQoE: aktive vs. passive Messung?",
+   "a": "<p>AppQoE optimiert die Anwendungsleistung aus Sicht des Nutzers.</p><ul><li><b>Aktiv:</b> synthetischer Testverkehr (Probes)</li><li><b>Passiv:</b> Auswertung des echten Anwendungsverkehrs</li></ul>"
+  },
+  {
+   "topic": "sdwan",
+   "q": "Welche Risiken haben Agile Operations?",
+   "a": "<ul><li>Abhängigkeit vom Orchestrator (sein Ausfall darf den Datenverkehr nicht stoppen)</li><li>automatisierte Fehlkonfiguration an vielen Standorten gleichzeitig</li><li>Legacy-Geräte</li><li>Compliance (RBAC, Audit-Logs)</li></ul>"
+  },
+  {
+   "topic": "sdwan",
+   "q": "Load Balancing: A+B vs. A+A?",
+   "a": "<ul><li><b>A+B (klassisch):</b> Backup-Leitung wird nur bei Ausfall genutzt</li><li><b>A+A (SD-WAN):</b> beide Leitungen werden gleichzeitig genutzt</li></ul><p>Varianten: Per-Session Load Sharing, Per-Session Weighted, Application Pinning, Application-Aware Routing.</p>"
+  },
+  {
+   "topic": "sdwan",
+   "q": "AppSLA vs. Provider-SLA?",
+   "a": "<ul><li><b>Provider-SLA:</b> gilt pro Leitung</li><li><b>AppSLA:</b> Grenzwerte pro Anwendung (Loss, Jitter, Latenz, Bandbreite). Bei Verletzung legt SD-WAN den Verkehr proaktiv um, bevor der Nutzer es merkt.</li></ul>"
+  },
+  {
+   "topic": "sdwan",
+   "q": "Direct Internet Access vs. Backhauling?",
+   "a": "<ul><li><b>Backhauling:</b> Cloud-/SaaS-Verkehr geht erst zum zentralen Rechenzentrum und von dort ins Internet → höhere Latenz, Last auf der Zentrale</li><li><b>DIA:</b> lokaler Breakout direkt am Standort ins Internet</li></ul>"
+  },
+  {
+   "topic": "sdwan",
+   "q": "Was ist End-to-End Segmentation?",
+   "a": "<p>Logisch getrennte Segmente (z. B. Mitarbeiter, Gäste, IoT, kritische Systeme) werden durchgängig über das Overlay getrennt geführt, vom Standort bis zum Ziel.</p>"
+  },
+  {
+   "topic": "sdwan",
+   "q": "Fully Managed Network: CapEx vs. OpEx?",
+   "a": "<p>Der Hersteller betreibt das Netz (z. B. Cisco Meraki).</p><ul><li><b>CapEx:</b> Investition, über Jahre abgeschrieben (klassisch: eigene Hardware)</li><li><b>OpEx:</b> laufende Betriebsausgaben, sofort Aufwand (Managed Service)</li></ul><p>Vorteil: weniger eigenes Personal. Nachteil: langfristig teurer.</p>"
+  },
+  {
+   "topic": "zt",
+   "q": "Was ist der Grundsatz von Zero Trust?",
+   "a": "<p><b>„Nie vertrauen, immer verifizieren.“</b></p><p>Es gibt keinen Unterschied mehr zwischen internem und externem Zugriff. Jede Anfrage gilt als potenziell unsicher und wird einzeln geprüft, egal ob vom Büro, Homeoffice oder unterwegs.</p>"
+  },
+  {
+   "topic": "zt",
+   "q": "Klassisches VPN vs. ZTNA?",
+   "a": "<table><tr><th></th><th>VPN</th><th>ZTNA</th></tr>\n<tr><td>Vertrauen</td><td>wer im Netz ist, gilt als vertrauenswürdig</td><td>niemand, jeder Zugriff wird geprüft</td></tr>\n<tr><td>Umfang</td><td>ganzes Netzsegment</td><td>einzelne Anwendungen (Least Privilege)</td></tr>\n<tr><td>Basis</td><td>Netzzugehörigkeit</td><td>Identität, Gerät, Standort, Zeit, Risiko</td></tr>\n<tr><td>Architektur</td><td>Perimeter, laterale Bewegung möglich</td><td>Mikroperimeter um jede Anwendung</td></tr>\n<tr><td>Gateway</td><td>zentral, Engpass, Single Point of Failure</td><td>cloud-optimiert, direkt zur Anwendung</td></tr></table>"
+  },
+  {
+   "topic": "zt",
+   "q": "Nenne die Komponenten der ZTNA-Architektur.",
+   "a": "<ul><li><b>Identity Provider (IdP)</b>, z. B. Microsoft Entra ID, Okta: Authentifizierung (MFA, SSO)</li><li><b>Policy Engine</b>: bewertet Identität, Gerät, Kontext, Richtlinien → Allow/Deny</li><li><b>Policy Enforcement Point (PEP)</b>, Cloud Gateway oder Connector: baut den Tunnel nur zur freigegebenen Anwendung auf</li></ul>"
+  },
+  {
+   "topic": "zt",
+   "q": "Beschreibe den ZTNA-Zugriffsablauf.",
+   "a": "<ol><li>Zugriffsanforderung (TLS-verschlüsselt)</li><li>Identität prüfen (IdP, MFA)</li><li>Gerät prüfen (Device Posture)</li><li>Kontext bewerten, Policy Engine entscheidet</li><li>PEP verbindet nur mit der freigegebenen Anwendung</li><li>Sitzung wird laufend überwacht</li></ol>"
+  },
+  {
+   "topic": "zt",
+   "q": "Was wird bei der Device Posture geprüft?",
+   "a": "<p>Ob das Gerät die Sicherheitsvorgaben erfüllt: aktuelles Betriebssystem, Patch-Stand, Endpoint Security aktiv, Festplattenverschlüsselung, keine Malware (Compliance-Status, z. B. per MDM/EMM).</p>"
+  },
+  {
+   "topic": "zt",
+   "q": "Erkläre das Least-Privilege-Prinzip an einem Beispiel.",
+   "a": "<p>Ein Vertriebsmitarbeiter im Homeoffice bekommt Zugriff auf das <b>ERP-System</b>. Personalverwaltung, Finanzsystem und Dateiserver werden verweigert und bleiben für ihn unsichtbar. Er bekommt keinen Netzzugang, nur Zugang zu einer Anwendung.</p>"
+  },
+  {
+   "topic": "zt",
+   "q": "Was bedeutet kontinuierliche Prüfung bei ZTNA?",
+   "a": "<p>Die Prüfung endet nicht mit dem Login. Während der Sitzung werden Identität, Gerät und Kontext laufend neu bewertet. Ändert sich etwas (Gerät unsicher, Standort im Risikogebiet, ungewöhnliches Verhalten), wird der Zugriff sofort beendet oder eine Neu-Authentifizierung verlangt.</p>"
+  },
+  {
+   "topic": "zt",
+   "q": "Welche Sicherheitsvorteile bietet ZTNA?",
+   "a": "<ul><li>kleinere Angriffsfläche: nicht autorisierte Anwendungen sind unsichtbar (Schutz vor Reconnaissance)</li><li>keine laterale Bewegung im Netz</li><li>Schutz vor Insidern, auch interne Nutzer werden geprüft</li><li>minimale Rechte, schnelle Skalierung</li></ul>"
+  },
+  {
+   "topic": "zt",
+   "q": "Wie verhalten sich ZTNA und SD-WAN zueinander?",
+   "a": "<p>Sie ergänzen sich: <b>SD-WAN</b> optimiert die Transportwege, <b>ZTNA</b> regelt den Zugriff auf Anwendungen.</p><p>ZTNA ersetzt viele Remote-VPN-Szenarien, aber nicht jedes Site-to-Site-VPN. Grenzen: Abhängigkeit von der ZTNA-Plattform, sorgfältige Richtlinienplanung.</p>"
+  },
+  {
+   "topic": "zt",
+   "q": "SASE = ? (Formel)",
+   "a": "<p><b>SASE = SD-WAN + SSE</b></p><ul><li><b>SD-WAN:</b> Netzwerk, Konnektivität, Pfadsteuerung</li><li><b>SSE (Security Service Edge):</b> cloudbasierte Sicherheitsfunktionen</li></ul><p>SASE ist ein <b>Architekturkonzept</b>, kein einzelnes Produkt.</p>"
+  },
+  {
+   "topic": "zt",
+   "q": "Welche vier Sicherheitsfunktionen bündelt SSE?",
+   "a": "<ul><li><b>SWG</b> (Secure Web Gateway): Web-Filterung, Malwareschutz, TLS-Inspection</li><li><b>CASB</b> (Cloud Access Security Broker): Kontrolle von SaaS, Datenschutz, Schatten-IT</li><li><b>FWaaS</b> (Firewall as a Service): Firewall inkl. IPS/IDS aus der Cloud</li><li><b>ZTNA</b>: kontextabhängiger Zugriff auf Anwendungen</li></ul><p>Dazu oft DLP.</p>"
+  },
+  {
+   "topic": "zt",
+   "q": "Wie ist eine SASE-Architektur aufgebaut? Welche Rolle spielen PoPs?",
+   "a": "<p>Niederlassungen (per SD-WAN) sowie Homeoffice, mobile und externe Nutzer (per ZTNA) verbinden sich verschlüsselt mit dem <b>nächstgelegenen PoP</b> (Point of Presence) der SASE-Cloud.</p><p>Dort wirken alle Sicherheitsfunktionen; dann geht der Verkehr direkt zu Internet, SaaS, Rechenzentrum oder IaaS.</p>"
+  },
+  {
+   "topic": "zt",
+   "q": "Traditionelle Sicherheitsarchitektur vs. SASE?",
+   "a": "<table><tr><th>Traditionell</th><th>SASE</th></tr>\n<tr><td>gesamter Verkehr per VPN/MPLS zum Rechenzentrum (Backhauling)</td><td>direkter Weg zum nächsten PoP</td></tr>\n<tr><td>hohe Latenz bei Cloud/SaaS</td><td>geringere Latenz</td></tr>\n<tr><td>getrennte Geräte und Anbieter</td><td>eine Plattform, zentrale Richtlinien</td></tr>\n<tr><td>Hardware mit Skalierungsgrenzen</td><td>cloud-native, weltweit skalierbar</td></tr></table>"
+  },
+  {
+   "topic": "zt",
+   "q": "Welche drei Probleme löst SASE – und wo liegen seine Grenzen?",
+   "a": "<p><b>Löst:</b> Komplexität (viele getrennte Lösungen), Remote- und Cloud-Arbeit (Perimeter passt nicht mehr), Skalierung (Hardware-Grenzen).</p><p><b>Grenzen:</b> Performance hängt von PoP-Nähe und Routing ab; ersetzt nicht automatisch alle Sicherheitslösungen im Rechenzentrum.</p>"
+  },
+  {
+   "topic": "zt",
+   "q": "SD-WAN vs. SSE vs. SASE: Fokus und Einsatzort?",
+   "a": "<table><tr><th></th><th>Fokus</th><th>Einsatzort</th></tr>\n<tr><td>SD-WAN</td><td>Netzwerk, Pfadsteuerung, Performance</td><td>WAN Edge am Standort</td></tr>\n<tr><td>SSE</td><td>Sicherheit für Internet, SaaS, private Apps</td><td>global verteilte Cloud-PoPs</td></tr>\n<tr><td>SASE</td><td>beides integriert</td><td>Edge + Cloud-PoPs</td></tr></table>"
+  }
+ ]
+}
